@@ -45,6 +45,18 @@ func (f ChangeSequenceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChangeSequenceMutation", m)
 }
 
+// The InvalidRefreshMessageFunc type is an adapter to allow the use of ordinary
+// function as InvalidRefreshMessage mutator.
+type InvalidRefreshMessageFunc func(context.Context, *ent.InvalidRefreshMessageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InvalidRefreshMessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InvalidRefreshMessageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InvalidRefreshMessageMutation", m)
+}
+
 // The JobAttemptFunc type is an adapter to allow the use of ordinary
 // function as JobAttempt mutator.
 type JobAttemptFunc func(context.Context, *ent.JobAttemptMutation) (ent.Value, error)

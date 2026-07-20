@@ -6,6 +6,8 @@ require (
 	entgo.io/ent v0.14.6
 	github.com/IBM/sarama v1.60.0
 	github.com/gin-gonic/gin v1.12.0
+	github.com/go-resty/resty/v2 v2.17.2
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/redis/go-redis/v9 v9.21.0
 	golang.org/x/sync v0.22.0
@@ -36,7 +38,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

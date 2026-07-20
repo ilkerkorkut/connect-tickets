@@ -15,6 +15,7 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent/batch"
 	"github.com/ilkerkorkut/connect-tickets/ent/batchjob"
 	"github.com/ilkerkorkut/connect-tickets/ent/changesequence"
+	"github.com/ilkerkorkut/connect-tickets/ent/invalidrefreshmessage"
 	"github.com/ilkerkorkut/connect-tickets/ent/jobattempt"
 	"github.com/ilkerkorkut/connect-tickets/ent/outboxevent"
 	"github.com/ilkerkorkut/connect-tickets/ent/repository"
@@ -79,13 +80,14 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			batch.Table:            batch.ValidColumn,
-			batchjob.Table:         batchjob.ValidColumn,
-			changesequence.Table:   changesequence.ValidColumn,
-			jobattempt.Table:       jobattempt.ValidColumn,
-			outboxevent.Table:      outboxevent.ValidColumn,
-			repository.Table:       repository.ValidColumn,
-			repositorychange.Table: repositorychange.ValidColumn,
+			batch.Table:                 batch.ValidColumn,
+			batchjob.Table:              batchjob.ValidColumn,
+			changesequence.Table:        changesequence.ValidColumn,
+			invalidrefreshmessage.Table: invalidrefreshmessage.ValidColumn,
+			jobattempt.Table:            jobattempt.ValidColumn,
+			outboxevent.Table:           outboxevent.ValidColumn,
+			repository.Table:            repository.ValidColumn,
+			repositorychange.Table:      repositorychange.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

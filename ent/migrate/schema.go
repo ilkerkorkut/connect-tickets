@@ -83,6 +83,26 @@ var (
 		Columns:    ChangeSequencesColumns,
 		PrimaryKey: []*schema.Column{ChangeSequencesColumns[0]},
 	}
+	// InvalidRefreshMessagesColumns holds the columns for the "invalid_refresh_messages" table.
+	InvalidRefreshMessagesColumns = []*schema.Column{
+		{Name: "event_key", Type: field.TypeString, Size: 128},
+		{Name: "error_code", Type: field.TypeString, Size: 64},
+		{Name: "payload", Type: field.TypeBytes},
+		{Name: "recorded_at", Type: field.TypeTime},
+	}
+	// InvalidRefreshMessagesTable holds the schema information for the "invalid_refresh_messages" table.
+	InvalidRefreshMessagesTable = &schema.Table{
+		Name:       "invalid_refresh_messages",
+		Columns:    InvalidRefreshMessagesColumns,
+		PrimaryKey: []*schema.Column{InvalidRefreshMessagesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "invalidrefreshmessage_recorded_at",
+				Unique:  false,
+				Columns: []*schema.Column{InvalidRefreshMessagesColumns[3]},
+			},
+		},
+	}
 	// JobAttemptsColumns holds the columns for the "job_attempts" table.
 	JobAttemptsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -152,13 +172,14 @@ var (
 		{Name: "owner", Type: field.TypeString, Size: 255},
 		{Name: "name", Type: field.TypeString, Size: 255},
 		{Name: "full_name", Type: field.TypeString, Size: 512},
-		{Name: "normalized_full_name", Type: field.TypeString, Unique: true, Size: 512},
+		{Name: "normalized_full_name", Type: field.TypeString, Size: 512},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 4096},
 		{Name: "stars", Type: field.TypeInt, Default: 0},
 		{Name: "language", Type: field.TypeString, Nullable: true, Size: 128},
 		{Name: "html_url", Type: field.TypeString, Size: 2048},
 		{Name: "notes", Type: field.TypeString, Size: 4000, Default: ""},
 		{Name: "fetched_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// RepositoriesTable holds the schema information for the "repositories" table.
 	RepositoriesTable = &schema.Table{
@@ -166,6 +187,14 @@ var (
 		Columns:    RepositoriesColumns,
 		PrimaryKey: []*schema.Column{RepositoriesColumns[0]},
 		Indexes: []*schema.Index{
+			{
+				Name:    "repository_normalized_full_name",
+				Unique:  true,
+				Columns: []*schema.Column{RepositoriesColumns[6]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "deleted_at IS NULL",
+				},
+			},
 			{
 				Name:    "repository_language",
 				Unique:  false,
@@ -221,6 +250,7 @@ var (
 		BatchesTable,
 		BatchJobsTable,
 		ChangeSequencesTable,
+		InvalidRefreshMessagesTable,
 		JobAttemptsTable,
 		OutboxEventsTable,
 		RepositoriesTable,

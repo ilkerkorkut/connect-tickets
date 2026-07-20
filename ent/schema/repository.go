@@ -40,8 +40,7 @@ func (Repository) Fields() []ent.Field {
 			MaxLen(512),
 		field.String("normalized_full_name").
 			NotEmpty().
-			MaxLen(512).
-			Unique(),
+			MaxLen(512),
 		field.String("description").
 			Optional().
 			MaxLen(4096),
@@ -59,11 +58,17 @@ func (Repository) Fields() []ent.Field {
 			MaxLen(4000),
 		field.Time("fetched_at").
 			Default(time.Now),
+		field.Time("deleted_at").
+			Optional().
+			Nillable(),
 	}
 }
 
 func (Repository) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("normalized_full_name").
+			Unique().
+			Annotations(entsql.IndexWhere("deleted_at IS NULL")),
 		index.Fields("language"),
 		index.Fields("stars"),
 		index.Fields("updated_at"),

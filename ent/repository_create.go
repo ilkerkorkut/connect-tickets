@@ -149,6 +149,20 @@ func (_c *RepositoryCreate) SetNillableFetchedAt(v *time.Time) *RepositoryCreate
 	return _c
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_c *RepositoryCreate) SetDeletedAt(v time.Time) *RepositoryCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableDeletedAt(v *time.Time) *RepositoryCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *RepositoryCreate) SetID(v uuid.UUID) *RepositoryCreate {
 	_c.mutation.SetID(v)
@@ -383,6 +397,10 @@ func (_c *RepositoryCreate) createSpec() (*Repository, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FetchedAt(); ok {
 		_spec.SetField(repository.FieldFetchedAt, field.TypeTime, value)
 		_node.FetchedAt = value
+	}
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(repository.FieldDeletedAt, field.TypeTime, value)
+		_node.DeletedAt = &value
 	}
 	return _node, _spec
 }

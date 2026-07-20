@@ -4,6 +4,7 @@ x-test-environment: &test-environment
   APP_ENV: test
   LOG_FORMAT: json
   DATABASE_URL: postgres://tracker:tracker@postgres:5432/tracker_test?sslmode=disable
+  TEST_DATABASE_URL: postgres://tracker:tracker@postgres:5432/tracker_test?sslmode=disable
   REDIS_ADDR: redis:6379
   KAFKA_BROKERS: kafka:9092
 
@@ -67,10 +68,10 @@ services:
     entrypoint: ["/bin/bash", "/scripts/create-topics.sh"]
 
   migrate:
-    build:
-      context: .
-    command: ["migrate"]
-    environment: *test-environment
+    image: arigaio/atlas:0.36.2
+    command: ["migrate", "apply", "--dir", "file:///migrations", "--revisions-schema", "atlas_schema_revisions", "--url", "postgres://tracker:tracker@postgres:5432/tracker_test?sslmode=disable&search_path=public"]
+    volumes:
+      - ./migrations:/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy

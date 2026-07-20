@@ -15,6 +15,9 @@ type BatchJob func(*sql.Selector)
 // ChangeSequence is the predicate function for changesequence builders.
 type ChangeSequence func(*sql.Selector)
 
+// InvalidRefreshMessage is the predicate function for invalidrefreshmessage builders.
+type InvalidRefreshMessage func(*sql.Selector)
+
 // JobAttempt is the predicate function for jobattempt builders.
 type JobAttempt func(*sql.Selector)
 

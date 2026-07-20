@@ -18,6 +18,8 @@ type Tx struct {
 	BatchJob *BatchJobClient
 	// ChangeSequence is the client for interacting with the ChangeSequence builders.
 	ChangeSequence *ChangeSequenceClient
+	// InvalidRefreshMessage is the client for interacting with the InvalidRefreshMessage builders.
+	InvalidRefreshMessage *InvalidRefreshMessageClient
 	// JobAttempt is the client for interacting with the JobAttempt builders.
 	JobAttempt *JobAttemptClient
 	// OutboxEvent is the client for interacting with the OutboxEvent builders.
@@ -160,6 +162,7 @@ func (tx *Tx) init() {
 	tx.Batch = NewBatchClient(tx.config)
 	tx.BatchJob = NewBatchJobClient(tx.config)
 	tx.ChangeSequence = NewChangeSequenceClient(tx.config)
+	tx.InvalidRefreshMessage = NewInvalidRefreshMessageClient(tx.config)
 	tx.JobAttempt = NewJobAttemptClient(tx.config)
 	tx.OutboxEvent = NewOutboxEventClient(tx.config)
 	tx.Repository = NewRepositoryClient(tx.config)

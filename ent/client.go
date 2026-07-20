@@ -18,6 +18,7 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent/batch"
 	"github.com/ilkerkorkut/connect-tickets/ent/batchjob"
 	"github.com/ilkerkorkut/connect-tickets/ent/changesequence"
+	"github.com/ilkerkorkut/connect-tickets/ent/invalidrefreshmessage"
 	"github.com/ilkerkorkut/connect-tickets/ent/jobattempt"
 	"github.com/ilkerkorkut/connect-tickets/ent/outboxevent"
 	"github.com/ilkerkorkut/connect-tickets/ent/repository"
@@ -35,6 +36,8 @@ type Client struct {
 	BatchJob *BatchJobClient
 	// ChangeSequence is the client for interacting with the ChangeSequence builders.
 	ChangeSequence *ChangeSequenceClient
+	// InvalidRefreshMessage is the client for interacting with the InvalidRefreshMessage builders.
+	InvalidRefreshMessage *InvalidRefreshMessageClient
 	// JobAttempt is the client for interacting with the JobAttempt builders.
 	JobAttempt *JobAttemptClient
 	// OutboxEvent is the client for interacting with the OutboxEvent builders.
@@ -57,6 +60,7 @@ func (c *Client) init() {
 	c.Batch = NewBatchClient(c.config)
 	c.BatchJob = NewBatchJobClient(c.config)
 	c.ChangeSequence = NewChangeSequenceClient(c.config)
+	c.InvalidRefreshMessage = NewInvalidRefreshMessageClient(c.config)
 	c.JobAttempt = NewJobAttemptClient(c.config)
 	c.OutboxEvent = NewOutboxEventClient(c.config)
 	c.Repository = NewRepositoryClient(c.config)
@@ -151,15 +155,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		Batch:            NewBatchClient(cfg),
-		BatchJob:         NewBatchJobClient(cfg),
-		ChangeSequence:   NewChangeSequenceClient(cfg),
-		JobAttempt:       NewJobAttemptClient(cfg),
-		OutboxEvent:      NewOutboxEventClient(cfg),
-		Repository:       NewRepositoryClient(cfg),
-		RepositoryChange: NewRepositoryChangeClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Batch:                 NewBatchClient(cfg),
+		BatchJob:              NewBatchJobClient(cfg),
+		ChangeSequence:        NewChangeSequenceClient(cfg),
+		InvalidRefreshMessage: NewInvalidRefreshMessageClient(cfg),
+		JobAttempt:            NewJobAttemptClient(cfg),
+		OutboxEvent:           NewOutboxEventClient(cfg),
+		Repository:            NewRepositoryClient(cfg),
+		RepositoryChange:      NewRepositoryChangeClient(cfg),
 	}, nil
 }
 
@@ -177,15 +182,16 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		Batch:            NewBatchClient(cfg),
-		BatchJob:         NewBatchJobClient(cfg),
-		ChangeSequence:   NewChangeSequenceClient(cfg),
-		JobAttempt:       NewJobAttemptClient(cfg),
-		OutboxEvent:      NewOutboxEventClient(cfg),
-		Repository:       NewRepositoryClient(cfg),
-		RepositoryChange: NewRepositoryChangeClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Batch:                 NewBatchClient(cfg),
+		BatchJob:              NewBatchJobClient(cfg),
+		ChangeSequence:        NewChangeSequenceClient(cfg),
+		InvalidRefreshMessage: NewInvalidRefreshMessageClient(cfg),
+		JobAttempt:            NewJobAttemptClient(cfg),
+		OutboxEvent:           NewOutboxEventClient(cfg),
+		Repository:            NewRepositoryClient(cfg),
+		RepositoryChange:      NewRepositoryChangeClient(cfg),
 	}, nil
 }
 
@@ -215,8 +221,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Batch, c.BatchJob, c.ChangeSequence, c.JobAttempt, c.OutboxEvent,
-		c.Repository, c.RepositoryChange,
+		c.Batch, c.BatchJob, c.ChangeSequence, c.InvalidRefreshMessage, c.JobAttempt,
+		c.OutboxEvent, c.Repository, c.RepositoryChange,
 	} {
 		n.Use(hooks...)
 	}
@@ -226,8 +232,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Batch, c.BatchJob, c.ChangeSequence, c.JobAttempt, c.OutboxEvent,
-		c.Repository, c.RepositoryChange,
+		c.Batch, c.BatchJob, c.ChangeSequence, c.InvalidRefreshMessage, c.JobAttempt,
+		c.OutboxEvent, c.Repository, c.RepositoryChange,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -242,6 +248,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.BatchJob.mutate(ctx, m)
 	case *ChangeSequenceMutation:
 		return c.ChangeSequence.mutate(ctx, m)
+	case *InvalidRefreshMessageMutation:
+		return c.InvalidRefreshMessage.mutate(ctx, m)
 	case *JobAttemptMutation:
 		return c.JobAttempt.mutate(ctx, m)
 	case *OutboxEventMutation:
@@ -651,6 +659,139 @@ func (c *ChangeSequenceClient) mutate(ctx context.Context, m *ChangeSequenceMuta
 		return (&ChangeSequenceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ChangeSequence mutation op: %q", m.Op())
+	}
+}
+
+// InvalidRefreshMessageClient is a client for the InvalidRefreshMessage schema.
+type InvalidRefreshMessageClient struct {
+	config
+}
+
+// NewInvalidRefreshMessageClient returns a client for the InvalidRefreshMessage from the given config.
+func NewInvalidRefreshMessageClient(c config) *InvalidRefreshMessageClient {
+	return &InvalidRefreshMessageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `invalidrefreshmessage.Hooks(f(g(h())))`.
+func (c *InvalidRefreshMessageClient) Use(hooks ...Hook) {
+	c.hooks.InvalidRefreshMessage = append(c.hooks.InvalidRefreshMessage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `invalidrefreshmessage.Intercept(f(g(h())))`.
+func (c *InvalidRefreshMessageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.InvalidRefreshMessage = append(c.inters.InvalidRefreshMessage, interceptors...)
+}
+
+// Create returns a builder for creating a InvalidRefreshMessage entity.
+func (c *InvalidRefreshMessageClient) Create() *InvalidRefreshMessageCreate {
+	mutation := newInvalidRefreshMessageMutation(c.config, OpCreate)
+	return &InvalidRefreshMessageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of InvalidRefreshMessage entities.
+func (c *InvalidRefreshMessageClient) CreateBulk(builders ...*InvalidRefreshMessageCreate) *InvalidRefreshMessageCreateBulk {
+	return &InvalidRefreshMessageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *InvalidRefreshMessageClient) MapCreateBulk(slice any, setFunc func(*InvalidRefreshMessageCreate, int)) *InvalidRefreshMessageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &InvalidRefreshMessageCreateBulk{err: fmt.Errorf("calling to InvalidRefreshMessageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*InvalidRefreshMessageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &InvalidRefreshMessageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for InvalidRefreshMessage.
+func (c *InvalidRefreshMessageClient) Update() *InvalidRefreshMessageUpdate {
+	mutation := newInvalidRefreshMessageMutation(c.config, OpUpdate)
+	return &InvalidRefreshMessageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *InvalidRefreshMessageClient) UpdateOne(_m *InvalidRefreshMessage) *InvalidRefreshMessageUpdateOne {
+	mutation := newInvalidRefreshMessageMutation(c.config, OpUpdateOne, withInvalidRefreshMessage(_m))
+	return &InvalidRefreshMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *InvalidRefreshMessageClient) UpdateOneID(id string) *InvalidRefreshMessageUpdateOne {
+	mutation := newInvalidRefreshMessageMutation(c.config, OpUpdateOne, withInvalidRefreshMessageID(id))
+	return &InvalidRefreshMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for InvalidRefreshMessage.
+func (c *InvalidRefreshMessageClient) Delete() *InvalidRefreshMessageDelete {
+	mutation := newInvalidRefreshMessageMutation(c.config, OpDelete)
+	return &InvalidRefreshMessageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *InvalidRefreshMessageClient) DeleteOne(_m *InvalidRefreshMessage) *InvalidRefreshMessageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *InvalidRefreshMessageClient) DeleteOneID(id string) *InvalidRefreshMessageDeleteOne {
+	builder := c.Delete().Where(invalidrefreshmessage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &InvalidRefreshMessageDeleteOne{builder}
+}
+
+// Query returns a query builder for InvalidRefreshMessage.
+func (c *InvalidRefreshMessageClient) Query() *InvalidRefreshMessageQuery {
+	return &InvalidRefreshMessageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeInvalidRefreshMessage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a InvalidRefreshMessage entity by its id.
+func (c *InvalidRefreshMessageClient) Get(ctx context.Context, id string) (*InvalidRefreshMessage, error) {
+	return c.Query().Where(invalidrefreshmessage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *InvalidRefreshMessageClient) GetX(ctx context.Context, id string) *InvalidRefreshMessage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *InvalidRefreshMessageClient) Hooks() []Hook {
+	return c.hooks.InvalidRefreshMessage
+}
+
+// Interceptors returns the client interceptors.
+func (c *InvalidRefreshMessageClient) Interceptors() []Interceptor {
+	return c.inters.InvalidRefreshMessage
+}
+
+func (c *InvalidRefreshMessageClient) mutate(ctx context.Context, m *InvalidRefreshMessageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&InvalidRefreshMessageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&InvalidRefreshMessageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&InvalidRefreshMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&InvalidRefreshMessageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown InvalidRefreshMessage mutation op: %q", m.Op())
 	}
 }
 
@@ -1189,11 +1330,11 @@ func (c *RepositoryChangeClient) mutate(ctx context.Context, m *RepositoryChange
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Batch, BatchJob, ChangeSequence, JobAttempt, OutboxEvent, Repository,
-		RepositoryChange []ent.Hook
+		Batch, BatchJob, ChangeSequence, InvalidRefreshMessage, JobAttempt, OutboxEvent,
+		Repository, RepositoryChange []ent.Hook
 	}
 	inters struct {
-		Batch, BatchJob, ChangeSequence, JobAttempt, OutboxEvent, Repository,
-		RepositoryChange []ent.Interceptor
+		Batch, BatchJob, ChangeSequence, InvalidRefreshMessage, JobAttempt, OutboxEvent,
+		Repository, RepositoryChange []ent.Interceptor
 	}
 )

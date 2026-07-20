@@ -193,6 +193,26 @@ func (_u *RepositoryUpdate) SetNillableFetchedAt(v *time.Time) *RepositoryUpdate
 	return _u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *RepositoryUpdate) SetDeletedAt(v time.Time) *RepositoryUpdate {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableDeletedAt(v *time.Time) *RepositoryUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *RepositoryUpdate) ClearDeletedAt() *RepositoryUpdate {
+	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
 // Mutation returns the RepositoryMutation object of the builder.
 func (_u *RepositoryUpdate) Mutation() *RepositoryMutation {
 	return _u.mutation
@@ -337,6 +357,12 @@ func (_u *RepositoryUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.FetchedAt(); ok {
 		_spec.SetField(repository.FieldFetchedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(repository.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(repository.FieldDeletedAt, field.TypeTime)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -523,6 +549,26 @@ func (_u *RepositoryUpdateOne) SetNillableFetchedAt(v *time.Time) *RepositoryUpd
 	return _u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *RepositoryUpdateOne) SetDeletedAt(v time.Time) *RepositoryUpdateOne {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableDeletedAt(v *time.Time) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *RepositoryUpdateOne) ClearDeletedAt() *RepositoryUpdateOne {
+	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
 // Mutation returns the RepositoryMutation object of the builder.
 func (_u *RepositoryUpdateOne) Mutation() *RepositoryMutation {
 	return _u.mutation
@@ -697,6 +743,12 @@ func (_u *RepositoryUpdateOne) sqlSave(ctx context.Context) (_node *Repository, 
 	}
 	if value, ok := _u.mutation.FetchedAt(); ok {
 		_spec.SetField(repository.FieldFetchedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(repository.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(repository.FieldDeletedAt, field.TypeTime)
 	}
 	_node = &Repository{config: _u.config}
 	_spec.Assign = _node.assignValues

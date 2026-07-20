@@ -91,10 +91,10 @@ services:
     entrypoint: ["/bin/bash", "/scripts/create-topics.sh"]
 
   migrate:
-    build:
-      context: .
-    command: ["migrate"]
-    environment: *app-environment
+    image: arigaio/atlas:0.36.2
+    command: ["migrate", "apply", "--dir", "file:///migrations", "--revisions-schema", "atlas_schema_revisions", "--url", "postgres://tracker:tracker@postgres:5432/tracker?sslmode=disable&search_path=public"]
+    volumes:
+      - ./migrations:/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,49 +103,18 @@ services:
   api:
     build:
       context: .
-    command: ["api"]
-    environment:
-      <<: *app-environment
-      APP_MODE: api
+      target: api
+    environment: *app-environment
     depends_on: *app-depends-on
     ports:
       - "${HTTP_HOST_PORT:-18080}:8080"
-    healthcheck:
-      test: ["CMD", "/github-tracker", "healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
 
   worker:
     build:
       context: .
-    command: ["worker"]
-    environment:
-      <<: *app-environment
-      APP_MODE: worker
+      target: worker
+    environment: *app-environment
     depends_on: *app-depends-on
-    healthcheck:
-      test: ["CMD", "/github-tracker", "healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
-  publisher:
-    build:
-      context: .
-    command: ["publisher"]
-    environment:
-      <<: *app-environment
-      APP_MODE: publisher
-    depends_on: *app-depends-on
-    healthcheck:
-      test: ["CMD", "/github-tracker", "healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
 
 volumes:
   postgres-data:

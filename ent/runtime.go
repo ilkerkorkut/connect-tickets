@@ -9,6 +9,7 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent/batch"
 	"github.com/ilkerkorkut/connect-tickets/ent/batchjob"
 	"github.com/ilkerkorkut/connect-tickets/ent/changesequence"
+	"github.com/ilkerkorkut/connect-tickets/ent/invalidrefreshmessage"
 	"github.com/ilkerkorkut/connect-tickets/ent/jobattempt"
 	"github.com/ilkerkorkut/connect-tickets/ent/outboxevent"
 	"github.com/ilkerkorkut/connect-tickets/ent/repository"
@@ -92,6 +93,48 @@ func init() {
 	changesequence.DefaultLastValue = changesequenceDescLastValue.Default.(int64)
 	// changesequence.LastValueValidator is a validator for the "last_value" field. It is called by the builders before save.
 	changesequence.LastValueValidator = changesequenceDescLastValue.Validators[0].(func(int64) error)
+	invalidrefreshmessageFields := schema.InvalidRefreshMessage{}.Fields()
+	_ = invalidrefreshmessageFields
+	// invalidrefreshmessageDescErrorCode is the schema descriptor for error_code field.
+	invalidrefreshmessageDescErrorCode := invalidrefreshmessageFields[1].Descriptor()
+	// invalidrefreshmessage.ErrorCodeValidator is a validator for the "error_code" field. It is called by the builders before save.
+	invalidrefreshmessage.ErrorCodeValidator = func() func(string) error {
+		validators := invalidrefreshmessageDescErrorCode.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(error_code string) error {
+			for _, fn := range fns {
+				if err := fn(error_code); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// invalidrefreshmessageDescRecordedAt is the schema descriptor for recorded_at field.
+	invalidrefreshmessageDescRecordedAt := invalidrefreshmessageFields[3].Descriptor()
+	// invalidrefreshmessage.DefaultRecordedAt holds the default value on creation for the recorded_at field.
+	invalidrefreshmessage.DefaultRecordedAt = invalidrefreshmessageDescRecordedAt.Default.(func() time.Time)
+	// invalidrefreshmessageDescID is the schema descriptor for id field.
+	invalidrefreshmessageDescID := invalidrefreshmessageFields[0].Descriptor()
+	// invalidrefreshmessage.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	invalidrefreshmessage.IDValidator = func() func(string) error {
+		validators := invalidrefreshmessageDescID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(id string) error {
+			for _, fn := range fns {
+				if err := fn(id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	jobattemptMixin := schema.JobAttempt{}.Mixin()
 	jobattemptMixinFields0 := jobattemptMixin[0].Fields()
 	_ = jobattemptMixinFields0

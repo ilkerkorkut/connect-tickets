@@ -1,13 +1,18 @@
 # Graph Report - connect-tickets  (2026-07-20)
 
 ## Corpus Check
-- 225 files · ~168,237 words
+- 219 files · ~176,205 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 4655 nodes · 9395 edges · 255 communities (213 shown, 42 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 691 edges (avg confidence: 0.8)
+- 4922 nodes · 10038 edges · 261 communities (216 shown, 45 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 736 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `d6e639b2`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Repository Where And|Repository Where And]]
@@ -28,6 +33,7 @@
 - [[_COMMUNITY_Batchjobcreate Batchjob Create|Batchjobcreate Batchjob Create]]
 - [[_COMMUNITY_Outboxeventcreate Outboxevent Create|Outboxeventcreate Outboxevent Create]]
 - [[_COMMUNITY_Changesequencequery Changesequence Query|Changesequencequery Changesequence Query]]
+- [[_COMMUNITY_Aggregate Clone Order|Aggregate Clone Order]]
 - [[_COMMUNITY_Repositorychangemutation Mutation Operation|Repositorychangemutation Mutation Operation]]
 - [[_COMMUNITY_Batchquery Batch Query|Batchquery Batch Query]]
 - [[_COMMUNITY_Batchjobquery Batchjob Query|Batchjobquery Batchjob Query]]
@@ -122,7 +128,6 @@
 - [[_COMMUNITY_Changesequence Value Assignvalues|Changesequence Value Assignvalues]]
 - [[_COMMUNITY_Enttest Client Migrateschema|Enttest Client Migrateschema]]
 - [[_COMMUNITY_Outboxeventupdateone Outboxeventupdate Outboxevent|Outboxeventupdateone Outboxeventupdate Outboxevent]]
-- [[_COMMUNITY_Outbox Publisher Context|Outbox Publisher Context]]
 - [[_COMMUNITY_Jobattempt Byattemptnumber Bybatchjobid|Jobattempt Byattemptnumber Bybatchjobid]]
 - [[_COMMUNITY_Jobattemptupdateone Jobattemptupdate Jobattempt|Jobattemptupdateone Jobattemptupdate Jobattempt]]
 - [[_COMMUNITY_Jobattempt Jobattemptupdate Result|Jobattempt Jobattemptupdate Result]]
@@ -173,9 +178,22 @@
 - [[_COMMUNITY_Tasks And Acceptance|Tasks And Acceptance]]
 - [[_COMMUNITY_Httpapi Error Errors|Httpapi Error Errors]]
 - [[_COMMUNITY_Skills Graphify Incremental|Skills Graphify Incremental]]
+- [[_COMMUNITY_Batch Doc|Batch Doc]]
+- [[_COMMUNITY_Changefeed Doc|Changefeed Doc]]
+- [[_COMMUNITY_Database Transaction|Database Transaction]]
+- [[_COMMUNITY_Entstore Doc|Entstore Doc]]
+- [[_COMMUNITY_Github Doc|Github Doc]]
+- [[_COMMUNITY_Handlers Changes|Handlers Changes]]
+- [[_COMMUNITY_Httpapi Doc|Httpapi Doc]]
+- [[_COMMUNITY_Logging Doc|Logging Doc]]
+- [[_COMMUNITY_Middleware Doc|Middleware Doc]]
+- [[_COMMUNITY_Outbox Doc|Outbox Doc]]
 - [[_COMMUNITY_Pkg Github Com|Pkg Github Com]]
+- [[_COMMUNITY_Repository Doc|Repository Doc]]
 - [[_COMMUNITY_Repository Store|Repository Store]]
+- [[_COMMUNITY_Signal Doc|Signal Doc]]
 - [[_COMMUNITY_Runtime Configuration Tasks|Runtime Configuration Tasks]]
+- [[_COMMUNITY_Worker Doc|Worker Doc]]
 - [[_COMMUNITY_Community 200|Community 200]]
 - [[_COMMUNITY_Community 201|Community 201]]
 - [[_COMMUNITY_Community 202|Community 202]]
@@ -203,7 +221,6 @@
 - [[_COMMUNITY_Community 224|Community 224]]
 - [[_COMMUNITY_Community 225|Community 225]]
 - [[_COMMUNITY_Community 226|Community 226]]
-- [[_COMMUNITY_Community 227|Community 227]]
 - [[_COMMUNITY_Community 228|Community 228]]
 - [[_COMMUNITY_Community 229|Community 229]]
 - [[_COMMUNITY_Community 230|Community 230]]
@@ -230,6 +247,12 @@
 - [[_COMMUNITY_Community 252|Community 252]]
 - [[_COMMUNITY_Community 253|Community 253]]
 - [[_COMMUNITY_Community 254|Community 254]]
+- [[_COMMUNITY_Community 255|Community 255]]
+- [[_COMMUNITY_Community 257|Community 257]]
+- [[_COMMUNITY_Community 258|Community 258]]
+- [[_COMMUNITY_Community 259|Community 259]]
+- [[_COMMUNITY_Community 260|Community 260]]
+- [[_COMMUNITY_Community 261|Community 261]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Repository` - 164 edges
@@ -240,20 +263,20 @@
 6. `OutboxEventMutation` - 104 edges
 7. `JobAttempt` - 93 edges
 8. `RepositoryMutation` - 91 edges
-9. `Context` - 78 edges
-10. `JobAttemptMutation` - 78 edges
+9. `Context` - 84 edges
+10. `setContextOp()` - 83 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Required Package Boundaries` --semantically_similar_to--> `Architecture Boundaries`  [INFERRED] [semantically similar]
   tasks/01-repository-foundation.md → AGENTS.md
-- `TestCreateRefreshAllPersistsSnapshotAndEmptyBatch()` --calls--> `BatchIDEQ()`  [INFERRED]
-  internal/batch/service_integration_test.go → ent/batchjob/where.go
-- `TestBootstrapDependencyGraph()` --calls--> `newConfig()`  [INFERRED]
-  internal/app/bootstrap_test.go → ent/client.go
-- `NewSaramaConfig()` --calls--> `newConfig()`  [INFERRED]
-  internal/platform/kafka/config.go → ent/client.go
-- `NewContext()` --calls--> `WithValue()`  [INFERRED]
-  ent/ent.go → internal/platform/logging/context.go
+- `main()` --calls--> `RootContext()`  [INFERRED]
+  cmd/api/main.go → pkg/signal/signal.go
+- `main()` --calls--> `RootContext()`  [INFERRED]
+  cmd/worker/main.go → pkg/signal/signal.go
+- `TestInvalidValuesRejected()` --calls--> `contains()`  [INFERRED]
+  config/config_test.go → internal/bootstrap/lifecycle_test.go
+- `TestMalformedDurationRejected()` --calls--> `contains()`  [INFERRED]
+  config/config_test.go → internal/bootstrap/lifecycle_test.go
 
 ## Import Cycles
 - None detected.
@@ -263,7 +286,7 @@
 - **Distributed GitHub Fetch Coordination** — initial_plan_redis_distributed_coordination, product_requirements_redis_cache, github_redis_cache_cache_miss_lock, github_redis_cache_ownership_safe_release [EXTRACTED 1.00]
 - **Durable Refresh Processing Flow** — tasks_09_batch_and_outbox_publisher_transactional_outbox, tasks_10_refresh_worker_refresh_worker, tasks_11_retries_dlq_and_batch_correctness_durable_retry_scheduling [INFERRED 0.85]
 
-## Communities (255 total, 42 thin omitted)
+## Communities (261 total, 45 thin omitted)
 
 ### Community 0 - "Repository Where And"
 Cohesion: 0.03
@@ -271,19 +294,19 @@ Nodes (132): Repository, And(), CreatedAtIn(), CreatedAtNotIn(), Description(), 
 
 ### Community 1 - "Outboxevent Where Aggregateidin"
 Cohesion: 0.04
-Nodes (107): OutboxEvent, AggregateIDIn(), AggregateIDNotIn(), And(), AvailableAtIn(), AvailableAtNotIn(), CreatedAtIn(), CreatedAtNotIn() (+99 more)
+Nodes (106): OutboxEvent, AggregateIDIn(), AggregateIDNotIn(), And(), AvailableAtIn(), AvailableAtNotIn(), CreatedAtIn(), CreatedAtNotIn() (+98 more)
 
 ### Community 2 - "Batchjob Where And"
 Cohesion: 0.04
 Nodes (89): And(), AttemptCount(), AttemptCountEQ(), AttemptCountGT(), AttemptCountGTE(), AttemptCountIn(), AttemptCountLT(), AttemptCountLTE() (+81 more)
 
 ### Community 4 - "Httpapi Router App"
-Cohesion: 0.17
-Nodes (20): batchFake, changeFake, repositoryFake, baseDependencies(), newTestRouter(), TestBatchFailureIsSafe(), TestEndpoints(), TestRecoveryUsesSafeError() (+12 more)
+Cohesion: 0.10
+Nodes (23): BatchService, ChangeService, Engine, HandlerFunc, Context, HandlerFunc, HandlerFunc, T (+15 more)
 
 ### Community 5 - "Logging Context Worker"
 Cohesion: 0.06
-Nodes (74): Service, NewService(), refreshPayload(), Buffer, Client, Context, RefreshMessage, Status (+66 more)
+Nodes (73): Service, NewService(), refreshPayload(), Buffer, Context, HandlerFunc, Logger, Client (+65 more)
 
 ### Community 6 - "Repositorychange Where Changefeed"
 Cohesion: 0.06
@@ -294,7 +317,7 @@ Cohesion: 0.05
 Nodes (8): config, Context, Hook, Repository, RepositoryMutation, Time, RepositoryUpdate, RepositoryUpdateOne
 
 ### Community 8 - "Outboxeventquery Repository Service"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (14): config, Context, Interceptor, OrderOption, OutboxEvent, QueryContext, QuerySpec, Selector (+6 more)
 
 ### Community 10 - "Repositorychange Repositorychangeupdateone Repositorychangeupdate"
@@ -302,8 +325,8 @@ Cohesion: 0.06
 Nodes (19): config, Context, Hook, Operation, RepositoryChange, RepositoryChangeMutation, Time, UUID (+11 more)
 
 ### Community 11 - "Config Platform Validation"
-Cohesion: 0.07
-Nodes (50): contains(), AppConfig, AppConfig, CacheConfig, Load(), LoadFrom(), stringOr(), loaderFrom() (+42 more)
+Cohesion: 0.12
+Nodes (22): AppConfig, AppConfig, CacheConfig, CacheConfig, Config, DatabaseConfig, Duration, GitHubConfig (+14 more)
 
 ### Community 12 - "Jobattempt Where And"
 Cohesion: 0.06
@@ -318,27 +341,31 @@ Cohesion: 0.09
 Nodes (11): config, Context, CreateSpec, Hook, OutboxEvent, OutboxEventMutation, Status, Time (+3 more)
 
 ### Community 17 - "Changesequencequery Changesequence Query"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (13): ChangeSequenceGroupBy, ChangeSequenceSelect, ChangeSequence, config, Context, Interceptor, OrderOption, QueryContext (+5 more)
 
+### Community 18 - "Aggregate Clone Order"
+Cohesion: 0.16
+Nodes (10): cancellationError(), requestError(), TestRedisGatewayIntegration(), TestCheckUsesIndividualTimeoutAndSafeError(), TestReadyRequiresGateAndHealthyDependencies(), RateLimit, T, T (+2 more)
+
 ### Community 20 - "Batchquery Batch Query"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (14): BatchGroupBy, BatchSelect, Batch, config, Context, Interceptor, OrderOption, QueryContext (+6 more)
 
 ### Community 21 - "Batchjobquery Batchjob Query"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (14): BatchJobGroupBy, BatchJobSelect, BatchJob, config, Context, Interceptor, OrderOption, QueryContext (+6 more)
 
 ### Community 23 - "Jobattemptquery Jobattempt Query"
-Cohesion: 0.10
-Nodes (16): QueryContext, setContextOp(), config, Context, Interceptor, JobAttempt, OrderOption, QueryContext (+8 more)
+Cohesion: 0.05
+Nodes (14): config, Context, Interceptor, JobAttempt, OrderOption, QueryContext, QuerySpec, Selector (+6 more)
 
 ### Community 24 - "Repositoryquery Repository Query"
-Cohesion: 0.12
+Cohesion: 0.10
 Nodes (14): config, Context, Interceptor, OrderOption, QueryContext, QuerySpec, Repository, Selector (+6 more)
 
 ### Community 25 - "Repositorychangequery Repositorychange Query"
-Cohesion: 0.12
+Cohesion: 0.10
 Nodes (14): config, Context, Interceptor, OrderOption, QueryContext, QuerySpec, RepositoryChange, Selector (+6 more)
 
 ### Community 26 - "Repositorycreate Repository Create"
@@ -350,20 +377,20 @@ Cohesion: 0.05
 Nodes (43): CompletedAt(), CompletedAtEQ(), CompletedAtGT(), CompletedAtGTE(), CompletedAtLT(), CompletedAtLTE(), CompletedAtNEQ(), CreatedAt() (+35 more)
 
 ### Community 28 - "Batchjobupdateone Batchjobupdate Batchjob"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (5): BatchJobMutation, config, Hook, BatchJobUpdate, BatchJobUpdateOne
 
 ### Community 30 - "Client Get Getx"
-Cohesion: 0.18
-Nodes (10): Batch, BatchJob, ChangeSequence, Context, JobAttempt, OutboxEvent, Repository, RepositoryChange (+2 more)
+Cohesion: 0.07
+Nodes (22): BatchJobMutation, BatchMutation, ChangeSequenceMutation, JobAttemptMutation, JobAttemptUpdateOne, Mutation, OutboxEventMutation, RepositoryChangeMutation (+14 more)
 
 ### Community 32 - "Outboxeventupdateone Outboxeventupdate Outboxevent"
 Cohesion: 0.08
 Nodes (5): config, Hook, OutboxEventMutation, OutboxEventUpdate, OutboxEventUpdateOne
 
 ### Community 33 - "Error Constrainterror Validationerror"
-Cohesion: 0.07
-Nodes (35): AggregateFunc, clientCtxKey, ConstraintError, As(), Asc(), checkColumn(), Count(), Desc() (+27 more)
+Cohesion: 0.08
+Nodes (31): AggregateFunc, clientCtxKey, ConstraintError, As(), Asc(), checkColumn(), Count(), Desc() (+23 more)
 
 ### Community 34 - "Jobattemptcreate Jobattempt Create"
 Cohesion: 0.11
@@ -374,12 +401,12 @@ Cohesion: 0.11
 Nodes (36): And(), ID(), IDEQ(), IDGT(), IDGTE(), IDIn(), IDLT(), IDLTE() (+28 more)
 
 ### Community 36 - "Hook Mutate Chain"
-Cohesion: 0.12
-Nodes (27): Context, Hook, Mutation, Op, Value, BatchFunc, BatchJobFunc, Chain (+19 more)
+Cohesion: 0.11
+Nodes (28): Context, Hook, Mutation, Op, Value, BatchFunc, BatchJobFunc, Chain (+20 more)
 
 ### Community 37 - "Github Cache Fakestore"
-Cohesion: 0.25
-Nodes (19): fakeClock, fakeStore, TestRedisGatewayIntegration(), repositoryKey(), newFakeClock(), newFakeStore(), newTestGateway(), TestGatewayCacheHitRecheckAndDifferentKeys() (+11 more)
+Cohesion: 0.24
+Nodes (19): fakeClock, fakeStore, Gateway, newFakeClock(), newFakeStore(), newTestGateway(), TestGatewayCacheHitRecheckAndDifferentKeys(), TestGatewayCancellationLockExpiryAndOwnershipSafeRelease() (+11 more)
 
 ### Community 38 - "Batch Where And"
 Cohesion: 0.13
@@ -387,19 +414,19 @@ Nodes (35): And(), CompletedAt(), CompletedAtEQ(), CompletedAtGT(), CompletedAtG
 
 ### Community 39 - "Client Config Tx"
 Cohesion: 0.07
-Nodes (38): BatchUpdateOne, BatchJobUpdateOne, ChangeSequenceUpdateOne, Client, Debug(), Driver(), BatchClient, BatchJobClient (+30 more)
+Nodes (41): BatchUpdateOne, BatchJobUpdateOne, ChangeSequenceUpdateOne, Client, Debug(), Driver(), BatchClient, BatchJobClient (+33 more)
 
 ### Community 40 - "Tx Txdriver Commit"
 Cohesion: 0.10
-Nodes (21): CommitFunc, CommitHook, Committer, Rollbacker, RollbackFunc, RollbackHook, Tx, BatchClient (+13 more)
+Nodes (22): CommitFunc, CommitHook, Committer, Rollbacker, RollbackFunc, RollbackHook, Tx, BatchClient (+14 more)
 
 ### Community 41 - "Outboxevent Where Time"
 Cohesion: 0.06
-Nodes (36): Time, AvailableAt(), AvailableAtEQ(), AvailableAtGT(), AvailableAtGTE(), AvailableAtLT(), AvailableAtLTE(), AvailableAtNEQ() (+28 more)
+Nodes (33): Time, AvailableAt(), AvailableAtEQ(), AvailableAtGT(), AvailableAtGTE(), AvailableAtLT(), AvailableAtNEQ(), CreatedAt() (+25 more)
 
 ### Community 42 - "Changesequenceupdateone Changesequenceupdate Changesequence"
-Cohesion: 0.10
-Nodes (10): ChangeSequence, ChangeSequenceMutation, config, Context, Hook, ChangeSequenceUpdate, ChangeSequenceUpdateOne, Hook (+2 more)
+Cohesion: 0.11
+Nodes (7): ChangeSequence, ChangeSequenceMutation, config, Context, Hook, ChangeSequenceUpdate, ChangeSequenceUpdateOne
 
 ### Community 43 - "Jobattemptupdateone Jobattemptupdate Jobattempt"
 Cohesion: 0.09
@@ -410,48 +437,48 @@ Cohesion: 0.12
 Nodes (11): config, Context, CreateSpec, Hook, Operation, RepositoryChange, RepositoryChangeMutation, Time (+3 more)
 
 ### Community 45 - "Kafka Messages Platform"
-Cohesion: 0.14
-Nodes (33): ConsumerMessage, ProducerMessage, RecordHeader, Time, RecordHeader, RefreshMessage, T, DLQMessage (+25 more)
+Cohesion: 0.20
+Nodes (24): ConsumerMessage, ProducerMessage, RecordHeader, Time, ProducerMessage, DLQMessage, DecodeDLQ(), dlqHeaders() (+16 more)
 
 ### Community 46 - "Client Batchclient Mutate"
-Cohesion: 0.09
-Nodes (16): BatchJobCreate, BatchJobCreateBulk, BatchJobDelete, BatchJobUpdate, BatchJobClient, BatchJobMutation, BatchJobUpdateOne, BatchMutation (+8 more)
+Cohesion: 0.32
+Nodes (11): RecordHeader, RefreshMessage, T, refreshFixture(), TestConsumerSettlementIsExplicit(), TestDLQPayloadContainsOnlySafeFields(), TestMessageValidation(), TestProducerDeliversAcknowledgedResult() (+3 more)
 
 ### Community 48 - "Batchupdateone Batchupdate Batch"
 Cohesion: 0.14
 Nodes (8): Batch, BatchMutation, config, Context, Hook, Time, BatchUpdate, BatchUpdateOne
 
 ### Community 49 - "Handlers Handler Repos"
-Cohesion: 0.10
-Nodes (25): Detail, safeFailure(), createRepositoryRequest, Detail, errorBody, WriteError(), writeGitHubError(), WriteServiceError() (+17 more)
+Cohesion: 0.12
+Nodes (21): Detail, safeFailure(), Detail, errorBody, WriteError(), writeGitHubError(), WriteServiceError(), decodeJSON() (+13 more)
 
 ### Community 50 - "Batchcreate Batch Create"
 Cohesion: 0.16
 Nodes (10): Batch, BatchMutation, config, Context, CreateSpec, Hook, Time, UUID (+2 more)
 
 ### Community 51 - "Worker Store Postgresstore"
-Cohesion: 0.22
-Nodes (19): ClaimState, Context, Duration, Job, Pool, RefreshMessage, Repository, Time (+11 more)
+Cohesion: 0.18
+Nodes (28): BatchJob, BatchJobUpdateOne, ClaimState, Client, Context, Duration, Job, RefreshMessage (+20 more)
 
 ### Community 52 - "Signal App Bootstrap"
-Cohesion: 0.12
-Nodes (22): TestBootstrapDependencyGraph(), TestParseMode(), TestRuntimeModesAreSelectable(), Mode, joinModes(), Modes(), ParseMode(), CancelFunc (+14 more)
+Cohesion: 0.23
+Nodes (11): CancelFunc, Context, Signal, Signal, T, Notify(), RootContext(), sendSelf() (+3 more)
 
 ### Community 53 - "Batchjob Where Batch"
 Cohesion: 0.09
 Nodes (22): BatchID(), BatchIDEQ(), BatchIDGT(), BatchIDGTE(), BatchIDLT(), BatchIDLTE(), BatchIDNEQ(), ID() (+14 more)
 
 ### Community 54 - "Jobattemptclient Hooks Mutation"
-Cohesion: 0.14
-Nodes (9): JobAttemptUpdateOne, JobAttemptClient, newJobAttemptMutation(), withJobAttemptID(), JobAttemptCreate, JobAttemptCreateBulk, JobAttemptDelete, JobAttemptDeleteOne (+1 more)
+Cohesion: 0.13
+Nodes (10): BatchCreate, BatchCreateBulk, BatchDelete, BatchDeleteOne, BatchUpdate, BatchClient, BatchUpdateOne, Batch (+2 more)
 
 ### Community 55 - "Changesequencecreate Changesequence Create"
 Cohesion: 0.18
 Nodes (8): ChangeSequence, ChangeSequenceMutation, config, Context, CreateSpec, Hook, ChangeSequenceCreate, ChangeSequenceCreateBulk
 
 ### Community 56 - "Migrations Worker Store"
-Cohesion: 0.27
-Nodes (12): Context, Job, Pool, RefreshMessage, T, Time, UUID, cleanupWorkerBatch() (+4 more)
+Cohesion: 0.26
+Nodes (14): Client, Context, Job, Pool, RefreshMessage, T, Time, UUID (+6 more)
 
 ### Community 57 - "Kafka Producer Platform"
 Cohesion: 0.16
@@ -466,36 +493,36 @@ Cohesion: 0.16
 Nodes (14): ConsumerGroup, ConsumerGroupClaim, ConsumerGroupSession, Config, Context, Duration, KafkaConfig, Once (+6 more)
 
 ### Community 60 - "Github Integration Database"
-Cohesion: 0.11
-Nodes (18): TestCreateRefreshAllPersistsSnapshotAndEmptyBatch(), NewPool(), T, T, Context, DatabaseConfig, Pool, migration (+10 more)
+Cohesion: 0.27
+Nodes (16): closerFunc, bootstrap(), buildDatabase(), buildEnt(), buildKafka(), buildLogger(), buildRedis(), finalizeBootstrap() (+8 more)
 
 ### Community 61 - "Repository Where Time"
 Cohesion: 0.09
 Nodes (22): Time, CreatedAt(), CreatedAtEQ(), CreatedAtGT(), CreatedAtGTE(), CreatedAtLT(), CreatedAtLTE(), CreatedAtNEQ() (+14 more)
 
 ### Community 62 - "App Lifecycle Resources"
-Cohesion: 0.26
-Nodes (17): closerFunc, bootstrap(), buildDatabase(), buildEnt(), buildKafka(), buildLogger(), buildRedis(), finalizeBootstrap() (+9 more)
+Cohesion: 0.29
+Nodes (9): TestFinalizeBootstrapClosesAndJoins(), TestFinalizeBootstrapNilResources(), TestResourcesCloseCollectsAllErrors(), TestResourcesCloseIsLIFO(), TestResourcesCloseNilSafeAndIdempotent(), recorder, Closer, Mutex (+1 more)
 
 ### Community 63 - "Interceptors Query Batchclient"
-Cohesion: 0.10
-Nodes (8): BatchJobQuery, BatchQuery, ChangeSequenceQuery, Interceptor, inters, JobAttemptQuery, OutboxEventQuery, RepositoryQuery
+Cohesion: 0.12
+Nodes (6): BatchJobQuery, BatchQuery, Interceptor, inters, InvalidRefreshMessageQuery, RepositoryQuery
 
 ### Community 64 - "Github Cache Gateway"
-Cohesion: 0.23
-Nodes (14): coordinationStore, coordinationError(), defaultJitter(), lockKey(), NewGateway(), sleepContext(), RepositoryFetcher, CacheConfig (+6 more)
+Cohesion: 0.21
+Nodes (16): coordinationStore, coordinationError(), defaultJitter(), lockKey(), NewGateway(), repositoryKey(), sleepContext(), validPathSegment() (+8 more)
 
 ### Community 65 - "Batchjob Status Byattemptcount"
 Cohesion: 0.18
 Nodes (17): ByAttemptCount(), ByBatchID(), ByCompletedAt(), ByCreatedAt(), ByID(), ByLastErrorCode(), ByLastErrorMessage(), ByLeaseUntil() (+9 more)
 
 ### Community 66 - "Changesequenceclient Client Changesequencecreate"
-Cohesion: 0.12
-Nodes (12): ChangeSequenceCreate, ChangeSequenceCreateBulk, ChangeSequenceDelete, ChangeSequenceDeleteOne, ChangeSequenceUpdate, ChangeSequenceClient, changesequenceOption, ChangeSequenceUpdateOne (+4 more)
+Cohesion: 0.11
+Nodes (13): ChangeSequenceCreate, ChangeSequenceCreateBulk, ChangeSequenceDelete, ChangeSequenceDeleteOne, ChangeSequenceQuery, ChangeSequenceUpdate, ChangeSequenceClient, changesequenceOption (+5 more)
 
 ### Community 68 - "Github Client Boundeddiagnostic"
-Cohesion: 0.17
-Nodes (17): Client, boundedDiagnostic(), cancellationError(), isRateLimited(), NewClient(), newHTTPClient(), readBody(), truncateDiagnostic() (+9 more)
+Cohesion: 0.19
+Nodes (15): Client, boundedDiagnostic(), cancellationError(), isRateLimited(), NewClient(), newHTTPClient(), truncateDiagnostic(), validPathSegment() (+7 more)
 
 ### Community 69 - "Outboxevent Status Orderoption"
 Cohesion: 0.18
@@ -506,27 +533,23 @@ Cohesion: 0.22
 Nodes (11): Idempotent Kafka Processing, PostgreSQL Source of Truth, Transactional Outbox, Kafka Refresh Worker, Concurrent Repository Creation, Durable Refresh Attempt Recording, Outbox Event Idempotency, Repository Identity Constraint (+3 more)
 
 ### Community 71 - "Mutation Batchjoboption Batchoption"
-Cohesion: 0.16
-Nodes (17): batchjobOption, batchOption, jobattemptOption, BatchJob, JobAttempt, OutboxEvent, RepositoryChange, withBatchID() (+9 more)
-
-### Community 72 - "Selector Context Bool"
-Cohesion: 0.06
-Nodes (29): Annotation, FromContext(), Client, Context, Tx, NewContext(), NewTxContext(), TxFromContext() (+21 more)
+Cohesion: 0.08
+Nodes (48): InvalidRefreshMessage, Time, And(), ErrorCode(), ErrorCodeContains(), ErrorCodeContainsFold(), ErrorCodeEQ(), ErrorCodeEqualFold() (+40 more)
 
 ### Community 73 - "Kafka Fakesession Fakeclaim"
 Cohesion: 0.12
 Nodes (5): ConsumerMessage, Context, Settlement, fakeClaim, fakeSession
 
 ### Community 74 - "App Run Context"
-Cohesion: 0.15
-Nodes (13): RunAPI(), RunMigrate(), modeRunner, RunPublisher(), Run(), runMode(), RunWorker(), Context (+5 more)
+Cohesion: 0.14
+Nodes (10): main(), RunAPI(), run(), runner, RunWorker(), Load(), Context, Context (+2 more)
 
 ### Community 75 - "Github Client Httpapi"
-Cohesion: 0.16
-Nodes (19): newTestClient(), newTestClientWithHTTP(), TestFetchRepositoryClassifiesHTTPFailures(), TestFetchRepositoryDistinguishesCancellationAndTimeout(), TestFetchRepositoryInvalidResponseAndDiagnosticLimit(), TestFetchRepositoryMapsFieldsAndHeaders(), TestParseRetryAfter(), roundTripFunc (+11 more)
+Cohesion: 0.21
+Nodes (16): newTestClient(), newTestClientWithHTTP(), TestFetchRepositoryClassifiesHTTPFailures(), TestFetchRepositoryDistinguishesCancellationAndTimeout(), TestFetchRepositoryInvalidResponseAndDiagnosticLimit(), TestFetchRepositoryMapsFieldsAndHeaders(), TestParseRetryAfter(), roundTripFunc (+8 more)
 
 ### Community 76 - "Worker Fakestore Consumer"
-Cohesion: 0.28
+Cohesion: 0.27
 Nodes (9): ClaimState, Context, Duration, Job, RefreshMessage, Repository, Time, fakeGateway (+1 more)
 
 ### Community 77 - "Batch Delete Batchdelete"
@@ -534,20 +557,20 @@ Cohesion: 0.23
 Nodes (6): BatchMutation, config, Context, Hook, BatchDelete, BatchDeleteOne
 
 ### Community 78 - "Repositoryclient Client Repositoryupdateone"
-Cohesion: 0.13
-Nodes (10): RepositoryUpdateOne, Repository, newRepositoryMutation(), withRepository(), RepositoryClient, RepositoryCreate, RepositoryCreateBulk, RepositoryDelete (+2 more)
+Cohesion: 0.09
+Nodes (23): batchjobOption, batchOption, RepositoryUpdateOne, invalidrefreshmessageOption, InvalidRefreshMessage, Repository, RepositoryChange, newRepositoryMutation() (+15 more)
 
 ### Community 79 - "Repositorychange Delete Repositorychangedelete"
 Cohesion: 0.23
 Nodes (6): config, Context, Hook, RepositoryChangeMutation, RepositoryChangeDelete, RepositoryChangeDeleteOne
 
 ### Community 80 - "Outbox Publisher Fakestore"
-Cohesion: 0.21
-Nodes (12): Delivery, Context, Duration, Event, Mutex, ProducerMessage, Time, UUID (+4 more)
+Cohesion: 0.30
+Nodes (7): Context, ListInput, Page, Repository, Statistics, changeFake, repositoryFake
 
 ### Community 81 - "Repositorychangeclient Client Intercept"
-Cohesion: 0.11
-Nodes (11): BatchJobDeleteOne, RepositoryChangeUpdateOne, config, newRepositoryChangeMutation(), withRepositoryChangeID(), RepositoryChangeClient, RepositoryChangeCreate, RepositoryChangeCreateBulk (+3 more)
+Cohesion: 0.13
+Nodes (10): RepositoryChangeUpdateOne, config, newRepositoryChangeMutation(), withRepositoryChangeID(), RepositoryChangeClient, RepositoryChangeCreate, RepositoryChangeCreateBulk, RepositoryChangeDelete (+2 more)
 
 ### Community 83 - "Repository Orderoption Bycreatedat"
 Cohesion: 0.23
@@ -556,10 +579,6 @@ Nodes (14): OrderOption, ByCreatedAt(), ByDescription(), ByFetchedAt(), ByFullNa
 ### Community 84 - "Worker Consumer Consumermessage"
 Cohesion: 0.33
 Nodes (15): ConsumerMessage, T, DecodeRefresh(), TestCancellationLeavesRecordReplayable(), TestCooldownDefersWithoutConsumingAttempt(), TestDuplicateTerminalDeliveryDoesNotCallGitHub(), TestInvalidPayloadIsRecordedBeforeSettlement(), TestOutcomeFailureLeavesRecordReplayable() (+7 more)
-
-### Community 85 - "App All Devnull"
-Cohesion: 0.24
-Nodes (12): isContextShutdown(), newNoopResources(), RunAll(), runAllWith(), TestRunAllCancelsSiblingsOnFailure(), TestRunAllComposesAllThreeModes(), TestRunAllReturnsFirstMaterialFailure(), devNull (+4 more)
 
 ### Community 86 - "Batchjobclient Mutation Batchjobcreate"
 Cohesion: 0.02
@@ -570,8 +589,8 @@ Cohesion: 0.18
 Nodes (8): BatchJob, config, SelectValues, Status, Time, UUID, Value, BatchJobs
 
 ### Community 88 - "Op Setop Batchjobmutation"
-Cohesion: 0.09
-Nodes (12): BatchCreate, BatchCreateBulk, BatchDelete, BatchDeleteOne, BatchUpdate, BatchClient, BatchUpdateOne, Hook (+4 more)
+Cohesion: 0.44
+Nodes (12): contains(), newRecorder(), Handler, HTTPConfig, T, baseDependencies(), newTestRouter(), TestBatchFailureIsSafe() (+4 more)
 
 ### Community 89 - "Jobattempt Value Assignvalues"
 Cohesion: 0.18
@@ -606,64 +625,60 @@ Cohesion: 0.23
 Nodes (6): BatchJobMutation, config, Context, Hook, BatchJobDelete, BatchJobDeleteOne
 
 ### Community 97 - "Outboxeventclient Client Outboxeventupdateone"
-Cohesion: 0.14
-Nodes (9): OutboxEventUpdateOne, newOutboxEventMutation(), withOutboxEventID(), OutboxEventClient, OutboxEventCreate, OutboxEventCreateBulk, OutboxEventDelete, OutboxEventDeleteOne (+1 more)
+Cohesion: 0.10
+Nodes (13): OutboxEventUpdateOne, OutboxEvent, newOutboxEventMutation(), withOutboxEvent(), withOutboxEventID(), OutboxEventClient, outboxeventOption, OutboxEventCreate (+5 more)
 
 ### Community 98 - "Migrate Schema Create"
-Cohesion: 0.29
-Nodes (9): Context, Driver, Schema, Writer, Create(), Diff(), NamedDiff(), NewSchema() (+1 more)
+Cohesion: 0.36
+Nodes (7): Context, Driver, Schema, Writer, Create(), NewSchema(), Table
 
 ### Community 99 - "Outboxevent Delete Outboxeventdelete"
-Cohesion: 0.23
-Nodes (6): config, Context, Hook, OutboxEventMutation, OutboxEventDelete, OutboxEventDeleteOne
+Cohesion: 0.16
+Nodes (9): Hook, withHooks(), config, Context, Hook, OutboxEventMutation, OutboxEventDelete, OutboxEventDeleteOne (+1 more)
 
 ### Community 100 - "Repository Value Repositories"
-Cohesion: 0.18
-Nodes (7): Repositories, Repository, config, SelectValues, Time, UUID, Value
+Cohesion: 0.39
+Nodes (11): Client, migrateSchema(), NewClient(), newOptions(), Open(), WithMigrateOptions(), WithOptions(), Option (+3 more)
 
 ### Community 101 - "Repository Delete Repositorydelete"
-Cohesion: 0.19
-Nodes (7): IsConstraintError(), config, Context, Hook, RepositoryMutation, RepositoryDelete, RepositoryDeleteOne
+Cohesion: 0.11
+Nodes (12): config, Context, Hook, JobAttemptMutation, JobAttemptDelete, JobAttemptDeleteOne, config, Context (+4 more)
 
 ### Community 102 - "Httpapi Lifecycle Readinessfake"
 Cohesion: 0.21
-Nodes (11): Serve(), ServeListener(), TestServeListenerMarksUnreadyAndDrainsRequest(), Readiness, readinessFake, Context, Duration, Server (+3 more)
+Nodes (11): Context, Duration, Server, Mutex, T, Listener, Serve(), ServeListener() (+3 more)
 
 ### Community 103 - "Kafka Admin Platform"
-Cohesion: 0.25
-Nodes (12): Config, Context, KafkaConfig, TopicDetail, T, ensureDLQTopic(), ensureTopic(), EnsureTopics() (+4 more)
+Cohesion: 0.13
+Nodes (18): newReadiness(), Config, Config, Context, KafkaConfig, TopicDetail, T, TopicDetail (+10 more)
 
 ### Community 104 - "Changesequence Delete Changesequencedelete"
 Cohesion: 0.23
 Nodes (6): ChangeSequenceMutation, config, Context, Hook, ChangeSequenceDelete, ChangeSequenceDeleteOne
 
 ### Community 105 - "Jobattempt Delete Jobattemptdelete"
-Cohesion: 0.23
-Nodes (6): config, Context, Hook, JobAttemptMutation, JobAttemptDelete, JobAttemptDeleteOne
+Cohesion: 0.27
+Nodes (7): NewRequestError(), GitHub, RateLimit, Repository, RequestError, Duration, Time
 
 ### Community 106 - "Github Redisstore Lock"
 Cohesion: 0.24
 Nodes (6): coordinationStore, redisStore, Client, Context, Duration, Time
 
 ### Community 107 - "Github Ratelimit Gateway"
-Cohesion: 0.31
-Nodes (9): RateLimit, cooldownUntil(), ParseRetryAfter(), rateLimitFrom(), Context, Duration, Gateway, Response (+1 more)
+Cohesion: 0.20
+Nodes (10): cooldownUntil(), ParseRetryAfter(), rateLimitFrom(), Context, Gateway, Time, Duration, RateLimit (+2 more)
 
 ### Community 108 - "Outbox Publisher Outboxconfig"
-Cohesion: 0.33
-Nodes (12): OutboxConfig, OutboxConfig, T, ClaimStore, Producer, NewPublisher(), publisherConfig(), refreshEvent() (+4 more)
+Cohesion: 0.10
+Nodes (29): Delivery, Context, Duration, Event, OutboxConfig, Time, Context, Duration (+21 more)
 
 ### Community 110 - "Changesequence Value Assignvalues"
 Cohesion: 0.22
 Nodes (5): ChangeSequence, config, SelectValues, Value, ChangeSequences
 
 ### Community 111 - "Enttest Client Migrateschema"
-Cohesion: 0.39
-Nodes (11): Client, migrateSchema(), NewClient(), newOptions(), Open(), WithMigrateOptions(), WithOptions(), Option (+3 more)
-
-### Community 113 - "Outbox Publisher Context"
-Cohesion: 0.35
-Nodes (7): Context, Duration, Event, ProducerMessage, Time, Publisher, recordFor()
+Cohesion: 0.08
+Nodes (20): Batch, BatchJob, ChangeSequence, Context, InvalidRefreshMessage, InvalidRefreshMessageMutation, InvalidRefreshMessageUpdateOne, JobAttempt (+12 more)
 
 ### Community 114 - "Jobattempt Byattemptnumber Bybatchjobid"
 Cohesion: 0.30
@@ -674,12 +689,12 @@ Cohesion: 0.27
 Nodes (3): Result, ResultValidator(), Result
 
 ### Community 117 - "Outbox Store Context"
-Cohesion: 0.31
-Nodes (8): Context, Duration, Event, Pool, Time, UUID, Store, NewStore()
+Cohesion: 0.22
+Nodes (12): Client, Context, Duration, Event, Time, UUID, Store, NewStore() (+4 more)
 
 ### Community 118 - "Schema Repository Mixin"
 Cohesion: 0.11
-Nodes (20): BatchService, ChangeService, Engine, Dependencies, declaredBodyLimit(), healthHandler(), NewRouter(), requestDeadline() (+12 more)
+Nodes (15): QueryContext, setContextOp(), config, Context, Interceptor, InvalidRefreshMessage, OrderOption, QueryContext (+7 more)
 
 ### Community 119 - "Health Service Check"
 Cohesion: 0.29
@@ -695,27 +710,27 @@ Nodes (19): PostgreSQL Data Model, GitHub Gateway, Redis Coordination, Repositor
 
 ### Community 122 - "Logger Logging Platform"
 Cohesion: 0.25
-Nodes (8): Attr, LogConfig, Logger, Writer, Level, NewLogger(), parseLevel(), redactAttrs()
+Nodes (8): Attr, Level, NewLogger(), parseLevel(), redactAttrs(), LogConfig, Logger, Writer
 
 ### Community 125 - "Repository Model Time"
 Cohesion: 0.31
 Nodes (8): Repository, Time, UUID, GitHubRepository, ListInput, Page, Sort, Statistics
 
 ### Community 126 - "App Readiness Healthcheck"
-Cohesion: 0.25
-Nodes (6): RunHealthcheck(), newReadiness(), Context, Config, Resources, Service
+Cohesion: 0.11
+Nodes (8): config, Context, Hook, InvalidRefreshMessage, InvalidRefreshMessageMutation, Time, InvalidRefreshMessageUpdate, InvalidRefreshMessageUpdateOne
 
 ### Community 129 - "Repository Where Uuid"
 Cohesion: 0.25
 Nodes (8): UUID, ID(), IDEQ(), IDGT(), IDGTE(), IDLT(), IDLTE(), IDNEQ()
 
 ### Community 130 - "Schema Batchjob Mixin"
-Cohesion: 0.21
-Nodes (14): newRecorder(), TestFinalizeBootstrapClosesAndJoins(), TestFinalizeBootstrapNilResources(), TestResourcesCloseCollectsAllErrors(), TestResourcesCloseIsLIFO(), TestResourcesCloseNilSafeAndIdempotent(), TestWaitForShutdownReturnsContextError(), recorder (+6 more)
+Cohesion: 0.15
+Nodes (9): config, Context, CreateSpec, Hook, InvalidRefreshMessage, InvalidRefreshMessageMutation, Time, InvalidRefreshMessageCreate (+1 more)
 
 ### Community 131 - "Schema Jobattempt Mixin"
-Cohesion: 0.25
-Nodes (8): fakeValue, fakeClock, fakeStore, fakeValue, Context, Duration, Mutex, Time
+Cohesion: 0.37
+Nodes (13): Config, Loader, T, loaderFrom(), loadOK(), TestDefaultsAppliedWhenEnvUnset(), TestInvalidValuesRejected(), TestMalformedDurationRejected() (+5 more)
 
 ### Community 132 - "Schema Outboxevent Mixin"
 Cohesion: 0.13
@@ -730,8 +745,8 @@ Cohesion: 0.36
 Nodes (4): Once, ProducerMessage, fakeAsyncProducer, ProducerError
 
 ### Community 135 - "Predicate Batch Batchjob"
-Cohesion: 0.25
-Nodes (7): Batch, BatchJob, ChangeSequence, JobAttempt, OutboxEvent, Repository, RepositoryChange
+Cohesion: 0.22
+Nodes (8): Batch, BatchJob, ChangeSequence, InvalidRefreshMessage, JobAttempt, OutboxEvent, Repository, RepositoryChange
 
 ### Community 136 - "Schema Mixin Idmixin"
 Cohesion: 0.38
@@ -758,20 +773,24 @@ Cohesion: 0.40
 Nodes (4): Field, Mixin, Schema, Batch
 
 ### Community 142 - "Github Dto Owner"
-Cohesion: 0.33
-Nodes (5): owner, Repository, repositoryResponse, Time, owner
+Cohesion: 0.50
+Nodes (3): owner, repositoryResponse, owner
 
 ### Community 143 - "Handlers Batches Handler"
 Cohesion: 0.14
 Nodes (14): 28. README Requirements, AI workflow, Architecture, Change-feed guarantee, Conscious trade-offs, Graceful shutdown, Kafka choice, Overview (+6 more)
 
 ### Community 144 - "Handlers Doc Batchservice"
-Cohesion: 0.80
-Nodes (5): BatchService, ChangeService, New(), RepositoryService, Handler
+Cohesion: 0.33
+Nodes (11): LoadFrom(), stringOr(), Loader, boolOr(), durationOr(), Duration, Loader, int32Or() (+3 more)
 
 ### Community 145 - "Repository Service Where"
-Cohesion: 0.15
-Nodes (28): Client, Context, ListInput, Page, Repository, Statistics, Time, Tx (+20 more)
+Cohesion: 0.19
+Nodes (24): Client, Context, GitHub, ListInput, Page, Repository, Time, Tx (+16 more)
+
+### Community 148 - "Kafka Faketopicadmin Platform"
+Cohesion: 0.19
+Nodes (7): IsConstraintError(), config, Context, Hook, InvalidRefreshMessageMutation, InvalidRefreshMessageDelete, InvalidRefreshMessageDeleteOne
 
 ### Community 149 - "Repository Service Statistics"
 Cohesion: 0.14
@@ -782,8 +801,8 @@ Cohesion: 0.18
 Nodes (10): Architecture Boundaries, Golang Skill Orchestrator, Constraints, Deliverables, Done when, Objective, Required Package Boundaries, Source (+2 more)
 
 ### Community 151 - "App Seams Newlogger"
-Cohesion: 0.50
-Nodes (3): newLogger(), LogConfig, Logger
+Cohesion: 0.18
+Nodes (7): Repositories, Repository, config, SelectValues, Time, UUID, Value
 
 ### Community 155 - "Schema Changesequence Field"
 Cohesion: 0.67
@@ -816,6 +835,58 @@ Nodes (13): 1. Validated environment configuration (`internal/platform/config`),
 ### Community 163 - "Tasks And Acceptance"
 Cohesion: 0.67
 Nodes (3): Reproducible Operations, Acceptance Evidence, Operational Documentation
+
+### Community 167 - "Httpapi Error Errors"
+Cohesion: 0.80
+Nodes (5): BatchService, ChangeService, New(), RepositoryService, Handler
+
+### Community 169 - "Batch Doc"
+Cohesion: 0.20
+Nodes (6): InvalidRefreshMessage, config, SelectValues, Time, Value, InvalidRefreshMessages
+
+### Community 171 - "Changefeed Doc"
+Cohesion: 0.23
+Nodes (7): TestCreateRefreshAllPersistsSnapshotAndEmptyBatch(), fakeValue, fakeStore, Context, Duration, Mutex, T
+
+### Community 177 - "Entstore Doc"
+Cohesion: 0.24
+Nodes (6): Annotation, Field, Index, Mixin, Schema, Repository
+
+### Community 179 - "Github Doc"
+Cohesion: 0.22
+Nodes (10): Interceptor, querierAll(), querierCount(), scanWithInterceptors(), withInterceptors(), Q1, Q2, Querier (+2 more)
+
+### Community 180 - "Handlers Changes"
+Cohesion: 0.40
+Nodes (4): Statistics, languageCount(), LanguageNEQ(), LanguageNotNil()
+
+### Community 182 - "Httpapi Doc"
+Cohesion: 0.32
+Nodes (5): Field, Index, Mixin, Schema, BatchJob
+
+### Community 185 - "Logging Doc"
+Cohesion: 0.32
+Nodes (5): Field, Index, Mixin, Schema, JobAttempt
+
+### Community 186 - "Middleware Doc"
+Cohesion: 0.32
+Nodes (5): Field, Index, Mixin, Schema, OutboxEvent
+
+### Community 187 - "Outbox Doc"
+Cohesion: 0.47
+Nodes (4): Field, Index, Schema, InvalidRefreshMessage
+
+### Community 190 - "Repository Doc"
+Cohesion: 0.53
+Nodes (4): ByErrorCode(), ByID(), ByRecordedAt(), OrderOption
+
+### Community 193 - "Signal Doc"
+Cohesion: 0.70
+Nodes (3): Status, UUID, batchFake
+
+### Community 196 - "Worker Doc"
+Cohesion: 0.40
+Nodes (4): Context, DatabaseConfig, Pool, NewPool()
 
 ### Community 200 - "Community 200"
 Cohesion: 0.15
@@ -934,8 +1005,8 @@ Cohesion: 0.29
 Nodes (7): 4. Required Runtime Modes, `all`, `api`, `healthcheck`, `migrate`, `publisher`, `worker`
 
 ### Community 231 - "Community 231"
-Cohesion: 0.40
-Nodes (3): requestError(), RequestError, RateLimit
+Cohesion: 0.83
+Nodes (3): NewRequestError(), requestError(), RateLimit
 
 ### Community 232 - "Community 232"
 Cohesion: 0.33
@@ -977,25 +1048,37 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 Cohesion: 0.67
 Nodes (3): 13.2 Required topics, Dead-letter topic, Main refresh topic
 
+### Community 255 - "Community 255"
+Cohesion: 0.33
+Nodes (5): GitHub Repository Tracker, Operational choices, Run, Runtime layout, Validation
+
+### Community 257 - "Community 257"
+Cohesion: 0.09
+Nodes (12): BatchJobCreate, BatchJobCreateBulk, BatchJobDelete, BatchJobDeleteOne, BatchJobUpdate, BatchJobClient, BatchJobUpdateOne, Hook (+4 more)
+
+### Community 258 - "Community 258"
+Cohesion: 0.50
+Nodes (3): newLogger(), LogConfig, Logger
+
 ## Knowledge Gaps
-- **866 isolated node(s):** `Context`, `recreate-topics.sh script`, `config`, `UUID`, `Time` (+861 more)
+- **895 isolated node(s):** `AppConfig`, `LogConfig`, `HTTPConfig`, `DatabaseConfig`, `RedisConfig` (+890 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **42 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **45 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `IsConstraintError()` connect `Repository Delete Repositorydelete` to `Outboxeventupdate Outboxeventupdateone Check`, `Repositoryupdateone Repositoryupdate Repository`, `Repositorychange Repositorychangeupdateone Repositorychangeupdate`, `Batchjobcreate Batchjob Create`, `Outboxeventcreate Outboxevent Create`, `Repository Service Where`, `Repositorycreate Repository Create`, `Error Constrainterror Validationerror`, `Jobattemptcreate Jobattempt Create`, `Changesequenceupdateone Changesequenceupdate Changesequence`, `Repositorychangecreate Repositorychange Create`, `Batchupdateone Batchupdate Batch`, `Batchcreate Batch Create`, `Changesequencecreate Changesequence Create`, `Batch Delete Batchdelete`, `Repositorychange Delete Repositorychangedelete`, `Batchjob Delete Batchjobdelete`, `Outboxevent Delete Outboxeventdelete`, `Changesequence Delete Changesequencedelete`, `Jobattempt Delete Jobattemptdelete`, `Batchjobupdateone Batchjobupdate Batchjob`, `Outboxeventupdateone Outboxeventupdate Outboxevent`, `Jobattemptupdateone Jobattemptupdate Jobattempt`, `Jobattempt Jobattemptupdate Result`, `Batchjobupdate Batchjobupdateone Check`?**
-  _High betweenness centrality (0.133) - this node is a cross-community bridge._
-- **Why does `As()` connect `Error Constrainterror Validationerror` to `Repository Delete Repositorydelete`, `Logging Context Worker`, `Github Ratelimit Gateway`, `Github Client Httpapi`, `Config Platform Validation`, `Handlers Handler Repos`, `Repository Service Where`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
-- **Why does `BatchIDEQ()` connect `Batchjob Where Batch` to `Batchjob Where And`, `Github Integration Database`, `Logging Context Worker`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
-- **What connects `Context`, `recreate-topics.sh script`, `config` to the rest of the system?**
-  _867 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `IsConstraintError()` connect `Kafka Faketopicadmin Platform` to `Outboxeventupdate Outboxeventupdateone Check`, `Schema Batchjob Mixin`, `Repositoryupdateone Repositoryupdate Repository`, `Repositorychange Repositorychangeupdateone Repositorychangeupdate`, `Batchjobcreate Batchjob Create`, `Outboxeventcreate Outboxevent Create`, `Repository Service Where`, `Repositorycreate Repository Create`, `Error Constrainterror Validationerror`, `Jobattemptcreate Jobattempt Create`, `Changesequenceupdateone Changesequenceupdate Changesequence`, `Repositorychangecreate Repositorychange Create`, `Batchupdateone Batchupdate Batch`, `Batchcreate Batch Create`, `Worker Store Postgresstore`, `Changesequencecreate Changesequence Create`, `Batch Delete Batchdelete`, `Repositorychange Delete Repositorychangedelete`, `Batchjob Delete Batchjobdelete`, `Outboxevent Delete Outboxeventdelete`, `Repository Delete Repositorydelete`, `Changesequence Delete Changesequencedelete`, `Batchjobupdateone Batchjobupdate Batchjob`, `Outboxeventupdateone Outboxeventupdate Outboxevent`, `Jobattemptupdateone Jobattemptupdate Jobattempt`, `Jobattempt Jobattemptupdate Result`, `App Readiness Healthcheck`, `Batchjobupdate Batchjobupdateone Check`?**
+  _High betweenness centrality (0.180) - this node is a cross-community bridge._
+- **Why does `As()` connect `Error Constrainterror Validationerror` to `Schema Jobattempt Mixin`, `Logging Context Worker`, `Github Ratelimit Gateway`, `Github Client Httpapi`, `Handlers Handler Repos`, `Kafka Faketopicadmin Platform`, `Handlers Changes`?**
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
+- **Why does `BatchJobMutation` connect `Batchjobmutation Outboxeventmutation Batchmutation` to `Community 257`, `Outboxeventmutation Batchjobmutation Status`, `Database Transaction`, `Batchjobmutation Ids Wherep`, `Repositoryclient Client Repositoryupdateone`, `Repositorychangeclient Client Intercept`, `Changesequencemutation Removedids Addedids`, `Jobattemptquery Jobattempt Query`, `Batchmutation Tx Client`, `Community 222`, `Repositorymutation Outboxeventmutation Batchjobmutation`?**
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+- **What connects `AppConfig`, `LogConfig`, `HTTPConfig` to the rest of the system?**
+  _896 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Repository Where And` be split into smaller, more focused modules?**
   _Cohesion score 0.02984734563681932 - nodes in this community are weakly interconnected._
 - **Should `Outboxevent Where Aggregateidin` be split into smaller, more focused modules?**
-  _Cohesion score 0.036690896503980615 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.037030506083583145 - nodes in this community are weakly interconnected._
 - **Should `Batchjob Where And` be split into smaller, more focused modules?**
   _Cohesion score 0.043945068664169785 - nodes in this community are weakly interconnected._

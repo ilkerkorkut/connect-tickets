@@ -38,6 +38,8 @@ const (
 	FieldNotes = "notes"
 	// FieldFetchedAt holds the string denoting the fetched_at field in the database.
 	FieldFetchedAt = "fetched_at"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// Table holds the table name of the repository in the database.
 	Table = "repositories"
 )
@@ -57,6 +59,7 @@ var Columns = []string{
 	FieldHTMLURL,
 	FieldNotes,
 	FieldFetchedAt,
+	FieldDeletedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -170,4 +173,9 @@ func ByNotes(opts ...sql.OrderTermOption) OrderOption {
 // ByFetchedAt orders the results by the fetched_at field.
 func ByFetchedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFetchedAt, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
