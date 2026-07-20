@@ -43,12 +43,15 @@ func NewProducer(cfg config.KafkaConfig, saramaConfig *sarama.Config) (*Producer
 	if err != nil {
 		return nil, err
 	}
+
 	return newProducer(producer, int(cfg.ProducerMaxBytes)), nil
 }
 
 func newProducer(producer asyncProducer, maxBytes int) *Producer {
 	p := &Producer{producer: producer, maxBytes: maxBytes, closeDone: make(chan struct{})}
+
 	go p.collectDeliveries()
+
 	return p
 }
 
@@ -149,6 +152,7 @@ func (p *Producer) Shutdown(timeout time.Duration) error {
 func (p *Producer) collectDeliveries() {
 	successes := p.producer.Successes()
 	errors := p.producer.Errors()
+
 	for successes != nil || errors != nil {
 		select {
 		case message, ok := <-successes:
@@ -174,10 +178,12 @@ func (p *Producer) complete(message *sarama.ProducerMessage, delivery Delivery, 
 	if message == nil {
 		return
 	}
+
 	pending, ok := message.Metadata.(*pendingDelivery)
 	if !ok || pending == nil {
 		return
 	}
+
 	select {
 	case pending.result <- deliveryResult{delivery: delivery, err: err}:
 	default:

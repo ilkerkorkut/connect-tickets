@@ -16,6 +16,7 @@ func NewClient(cfg config.RedisConfig) (*Client, error) {
 	if cfg.Addr == "" {
 		return nil, ErrMissingRedisAddr
 	}
+
 	client := goredis.NewClient(&goredis.Options{
 		Addr:         cfg.Addr,
 		Username:     "",
@@ -27,5 +28,6 @@ func NewClient(cfg config.RedisConfig) (*Client, error) {
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	})
+
 	return client, nil
 }

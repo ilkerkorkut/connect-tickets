@@ -40,11 +40,19 @@ func (s redisStore) Get(ctx context.Context, key string) (string, error) {
 	return s.client.Get(ctx, key).Result()
 }
 
-func (s redisStore) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+func (s redisStore) Set(
+	ctx context.Context,
+	key, value string,
+	ttl time.Duration,
+) error {
 	return s.client.Set(ctx, key, value, ttl).Err()
 }
 
-func (s redisStore) SetNX(ctx context.Context, key, value string, ttl time.Duration) (bool, error) {
+func (s redisStore) SetNX(
+	ctx context.Context,
+	key, value string,
+	ttl time.Duration,
+) (bool, error) {
 	return s.client.SetNX(ctx, key, value, ttl).Result()
 }
 
@@ -56,10 +64,16 @@ func (s redisStore) CompareAndDelete(ctx context.Context, key, token string) err
 	return compareAndDelete.Run(ctx, s.client, []string{key}, token).Err()
 }
 
-func (s redisStore) SetLater(ctx context.Context, key string, until, now time.Time) error {
+func (s redisStore) SetLater(
+	ctx context.Context,
+	key string,
+	until, now time.Time,
+) error {
 	ttl := until.Sub(now)
+
 	if ttl <= 0 {
 		return s.Delete(ctx, key)
 	}
+
 	return setLater.Run(ctx, s.client, []string{key}, until.UnixMilli(), ttl.Milliseconds()).Err()
 }

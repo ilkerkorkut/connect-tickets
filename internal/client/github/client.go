@@ -57,10 +57,8 @@ func NewClient(cfg config.GitHubConfig, httpClient *http.Client) (*Client, error
 }
 
 func newHTTPClient(cfg config.GitHubConfig) *http.Client {
-	dialTimeout := cfg.Timeout
-	if dialTimeout > 10*time.Second {
-		dialTimeout = 10 * time.Second
-	}
+	dialTimeout := min(cfg.Timeout, 10*time.Second)
+
 	transport := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext,
@@ -73,6 +71,7 @@ func newHTTPClient(cfg config.GitHubConfig) *http.Client {
 		ResponseHeaderTimeout: cfg.Timeout,
 		ExpectContinueTimeout: time.Second,
 	}
+
 	return &http.Client{
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {

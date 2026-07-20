@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+//nolint:mnd
 func defaults() Config {
 	return Config{
 		App: AppConfig{

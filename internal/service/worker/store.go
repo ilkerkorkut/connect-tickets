@@ -177,9 +177,9 @@ func (s *EntStore) CompleteSuccess(ctx context.Context, job Job, owner string, a
 		if err := tx.Client().RepositoryChange.Create().SetID(uuid.New()).SetSequence(sequence).SetEventID(uuid.NewString()).SetRepoID(job.RepositoryID).SetOperation(repositorychange.OperationRefreshed).SetRepositorySnapshot(snapshot).SetChangedAt(now).Exec(ctx); err != nil {
 			return fmt.Errorf("create refreshed repository change: %w", err)
 		}
-		if err := updateJob(tx, job.ID, func(update *ent.BatchJobUpdateOne) {
+		if err := updateJob(ctx, tx, job.ID, func(update *ent.BatchJobUpdateOne) {
 			update.SetStatus(batchjob.StatusSucceeded).ClearProcessingOwner().ClearLeaseUntil().ClearNextAttemptAt().SetCompletedAt(now).SetUpdatedAt(now)
-		}, ctx); err != nil {
+		}); err != nil {
 			return err
 		}
 		if err := finishAttempt(ctx, tx, job.ID, attempt, jobattempt.ResultSucceeded, "", now); err != nil {
@@ -191,9 +191,9 @@ func (s *EntStore) CompleteSuccess(ctx context.Context, job Job, owner string, a
 
 func (s *EntStore) CompleteFailure(ctx context.Context, job Job, owner string, attempt int, message kafka.RefreshMessage, code string, now time.Time) error {
 	return s.finish(ctx, job, owner, attempt, now, func(tx *ent.Tx) error {
-		if err := updateJob(tx, job.ID, func(update *ent.BatchJobUpdateOne) {
+		if err := updateJob(ctx, tx, job.ID, func(update *ent.BatchJobUpdateOne) {
 			update.SetStatus(batchjob.StatusFailed).ClearProcessingOwner().ClearLeaseUntil().ClearNextAttemptAt().SetLastErrorCode(code).SetLastErrorMessage(safeMessage(code)).SetCompletedAt(now).SetUpdatedAt(now)
-		}, ctx); err != nil {
+		}); err != nil {
 			return err
 		}
 		if err := finishAttempt(ctx, tx, job.ID, attempt, jobattempt.ResultFailed, code, now); err != nil {
@@ -211,9 +211,9 @@ func (s *EntStore) ScheduleRetry(ctx context.Context, job Job, owner string, att
 		retryAt = now
 	}
 	return s.finish(ctx, job, owner, attempt, now, func(tx *ent.Tx) error {
-		if err := updateJob(tx, job.ID, func(update *ent.BatchJobUpdateOne) {
+		if err := updateJob(ctx, tx, job.ID, func(update *ent.BatchJobUpdateOne) {
 			update.SetStatus(batchjob.StatusRetryWait).ClearProcessingOwner().ClearLeaseUntil().SetNextAttemptAt(retryAt).SetLastErrorCode(code).SetLastErrorMessage(safeMessage(code)).SetUpdatedAt(now)
-		}, ctx); err != nil {
+		}); err != nil {
 			return err
 		}
 		if err := finishAttempt(ctx, tx, job.ID, attempt, jobattempt.ResultRetryScheduled, code, now); err != nil {
@@ -260,7 +260,7 @@ func owns(job *ent.BatchJob, owner string, now time.Time) bool {
 	return job.ProcessingOwner == owner && job.LeaseUntil != nil && job.LeaseUntil.After(now)
 }
 
-func updateJob(tx *ent.Tx, jobID uuid.UUID, apply func(*ent.BatchJobUpdateOne), ctx context.Context) error {
+func updateJob(ctx context.Context, tx *ent.Tx, jobID uuid.UUID, apply func(*ent.BatchJobUpdateOne)) error {
 	update := tx.Client().BatchJob.UpdateOneID(jobID)
 	apply(update)
 	if err := update.Exec(ctx); err != nil {

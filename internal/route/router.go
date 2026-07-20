@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ilkerkorkut/connect-tickets/config"
-	"github.com/ilkerkorkut/connect-tickets/internal/handler"
+	handlers "github.com/ilkerkorkut/connect-tickets/internal/handler"
 	"github.com/ilkerkorkut/connect-tickets/internal/middleware"
 )
 
@@ -38,7 +38,9 @@ func NewRouter(dependencies Dependencies, cfg config.HTTPConfig, logger *slog.Lo
 	engine.GET("/readyz", healthHandler(dependencies.Health, true))
 	engine.GET("/health/live", healthHandler(dependencies.Health, false))
 	engine.GET("/health/ready", healthHandler(dependencies.Health, true))
+
 	handler := handlers.New(dependencies.Repositories, dependencies.Batches, dependencies.Changes)
+
 	api := engine.Group("/api")
 	api.POST("/repos", handler.CreateRepository)
 	api.GET("/repos", handler.ListRepositories)
@@ -50,6 +52,7 @@ func NewRouter(dependencies Dependencies, cfg config.HTTPConfig, logger *slog.Lo
 	api.DELETE("/repos/:id", handler.DeleteRepository)
 	api.POST("/repos/:id/refresh", handler.RefreshRepository)
 	api.GET("/batches/:id", handler.BatchStatus)
+
 	return engine
 }
 

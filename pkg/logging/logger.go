@@ -14,22 +14,6 @@ var (
 	ErrUnknownFormat = errors.New("unknown log format")
 )
 
-var redactedAttrKeys = map[string]struct{}{
-	"token":               {},
-	"authorization":       {},
-	"password":            {},
-	"secret":              {},
-	"credential":          {},
-	"credentials":         {},
-	"database_url":        {},
-	"redis_password":      {},
-	"kafka_sasl_password": {},
-	"auth":                {},
-	"api_key":             {},
-	"apikey":              {},
-	"private_key":         {},
-}
-
 func NewLogger(cfg config.LogConfig, out io.Writer) (*slog.Logger, error) {
 	level, err := parseLevel(cfg.Level)
 	if err != nil {
@@ -37,8 +21,7 @@ func NewLogger(cfg config.LogConfig, out io.Writer) (*slog.Logger, error) {
 	}
 
 	opts := &slog.HandlerOptions{
-		Level:       level,
-		ReplaceAttr: redactAttrs,
+		Level: level,
 	}
 
 	var handler slog.Handler
@@ -67,15 +50,4 @@ func parseLevel(raw string) (slog.Level, error) {
 	default:
 		return 0, ErrUnknownLevel
 	}
-}
-
-func redactAttrs(groups []string, a slog.Attr) slog.Attr {
-	if len(groups) > 0 {
-		return a
-	}
-	key := strings.ToLower(a.Key)
-	if _, sensitive := redactedAttrKeys[key]; sensitive {
-		return slog.Attr{Key: a.Key, Value: slog.StringValue("[redacted]")}
-	}
-	return a
 }

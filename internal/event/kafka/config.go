@@ -72,8 +72,8 @@ func configureConsumer(c *sarama.Config, cfg config.KafkaConfig) {
 	c.Consumer.Offsets.AutoCommit.Enable = false
 	c.Consumer.Offsets.Initial = sarama.OffsetOldest
 	c.Consumer.Fetch.Min = 1
-	c.Consumer.Fetch.Default = int32(cfg.FetchMaxBytes)
-	c.Consumer.Fetch.MaxBytes = int32(cfg.FetchMaxBytes)
+	c.Consumer.Fetch.Default = cfg.FetchMaxBytes
+	c.Consumer.Fetch.MaxBytes = cfg.FetchMaxBytes
 	c.Consumer.MaxProcessingTime = 2 * time.Minute
 
 	c.Consumer.Group.Session.Timeout = 30 * time.Second

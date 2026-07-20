@@ -16,13 +16,16 @@ func ParseRetryAfter(value string, now time.Time) (time.Duration, bool) {
 	if value == "" {
 		return 0, false
 	}
+
 	if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds >= 0 {
 		return time.Duration(seconds) * time.Second, true
 	}
+
 	when, err := http.ParseTime(value)
 	if err != nil {
 		return 0, false
 	}
+
 	if wait := when.Sub(now); wait > 0 {
 		return wait, true
 	}

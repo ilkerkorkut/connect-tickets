@@ -25,7 +25,13 @@ var (
 	ErrCacheCoordinationUnavailable = client.ErrCacheCoordinationUnavailable
 )
 
-func requestError(kind error, status int, rateLimit RateLimit, diagnostic string, cause error) error {
+func requestError(
+	kind error,
+	status int,
+	rateLimit RateLimit,
+	diagnostic string,
+	cause error,
+) error {
 	return client.NewRequestError(kind, status, rateLimit, diagnostic, cause)
 }
 
@@ -33,5 +39,6 @@ func cancellationError(cause error) error {
 	if errors.Is(cause, context.DeadlineExceeded) {
 		return requestError(ErrTimeout, 0, RateLimit{}, "request deadline exceeded", cause)
 	}
+
 	return requestError(ErrCanceled, 0, RateLimit{}, "request canceled", cause)
 }

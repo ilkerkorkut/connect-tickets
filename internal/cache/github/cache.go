@@ -35,14 +35,23 @@ type Gateway struct {
 	newToken     func() (string, error)
 }
 
-func NewGateway(upstream client.GitHub, redisClient *goredis.Client, cacheConfig config.CacheConfig, githubTimeout time.Duration) (*Gateway, error) {
+func NewGateway(
+	upstream client.GitHub,
+	redisClient *goredis.Client,
+	cacheConfig config.CacheConfig,
+	githubTimeout time.Duration,
+) (*Gateway, error) {
 	if upstream == nil || redisClient == nil || cacheConfig.TTL <= 0 || cacheConfig.LockTTL <= githubTimeout || cacheConfig.LockWait <= 0 || githubTimeout <= 0 {
 		return nil, ErrInvalidConfig
 	}
 	return newGateway(upstream, redisStore{client: redisClient}, cacheConfig), nil
 }
 
-func newGateway(upstream client.GitHub, store coordinationStore, cacheConfig config.CacheConfig) *Gateway {
+func newGateway(
+	upstream client.GitHub,
+	store coordinationStore,
+	cacheConfig config.CacheConfig,
+) *Gateway {
 	return &Gateway{
 		upstream:     upstream,
 		store:        store,
@@ -65,6 +74,7 @@ func (g *Gateway) RefreshRepository(ctx context.Context, owner, name string) (Re
 	if g == nil {
 		return Repository{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "gateway is not initialized", nil)
 	}
+
 	key, err := repositoryKey(owner, name)
 	if err != nil {
 		return Repository{}, err
@@ -72,20 +82,28 @@ func (g *Gateway) RefreshRepository(ctx context.Context, owner, name string) (Re
 	if err := g.store.Delete(ctx, key); err != nil {
 		return Repository{}, coordinationError(err)
 	}
+
 	return g.fetch(ctx, owner, name, true)
 }
 
-func (g *Gateway) fetch(ctx context.Context, owner, name string, refreshed bool) (Repository, error) {
+func (g *Gateway) fetch(
+	ctx context.Context,
+	owner, name string,
+	refreshed bool,
+) (Repository, error) {
 	if g == nil || g.upstream == nil || g.store == nil {
 		return Repository{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "gateway is not initialized", nil)
 	}
+
 	if err := ctx.Err(); err != nil {
 		return Repository{}, cancellationError(err)
 	}
+
 	key, err := repositoryKey(owner, name)
 	if err != nil {
 		return Repository{}, err
 	}
+
 	if repository, hit, err := g.cacheGet(ctx, key); err != nil {
 		return Repository{}, err
 	} else if hit && !refreshed {
@@ -130,16 +148,22 @@ func (g *Gateway) fetch(ctx context.Context, owner, name string, refreshed bool)
 	}
 }
 
-func (g *Gateway) fetchWithLock(ctx context.Context, owner, name, key, token string) (Repository, error) {
+func (g *Gateway) fetchWithLock(
+	ctx context.Context,
+	owner, name, key, token string,
+) (Repository, error) {
 	defer func() { _ = g.store.CompareAndDelete(ctx, lockKey(key), token) }()
+
 	if repository, hit, err := g.cacheGet(ctx, key); err != nil {
 		return Repository{}, err
 	} else if hit {
 		return repository, nil
 	}
+
 	if err := g.checkCooldown(ctx); err != nil {
 		return Repository{}, err
 	}
+
 	repository, err := g.upstream.FetchRepository(ctx, owner, name)
 	if err != nil {
 		if cooldownErr := g.RecordCooldown(ctx, err); cooldownErr != nil {
@@ -147,6 +171,7 @@ func (g *Gateway) fetchWithLock(ctx context.Context, owner, name, key, token str
 		}
 		return Repository{}, err
 	}
+
 	payload, err := json.Marshal(repository)
 	if err != nil {
 		return Repository{}, requestError(ErrInvalidResponse, 0, RateLimit{}, "encode repository cache entry", err)
@@ -154,10 +179,14 @@ func (g *Gateway) fetchWithLock(ctx context.Context, owner, name, key, token str
 	if err := g.store.Set(ctx, key, string(payload), g.cacheTTL); err != nil {
 		return Repository{}, coordinationError(err)
 	}
+
 	return repository, nil
 }
 
-func (g *Gateway) cacheGet(ctx context.Context, key string) (Repository, bool, error) {
+func (g *Gateway) cacheGet(
+	ctx context.Context,
+	key string,
+) (Repository, bool, error) {
 	payload, err := g.store.Get(ctx, key)
 	if errors.Is(err, goredis.Nil) {
 		return Repository{}, false, nil
@@ -194,24 +223,32 @@ func lockKey(cacheKey string) string {
 
 func randomToken() (string, error) {
 	bytes := make([]byte, 32)
+
 	if _, err := cryptorand.Read(bytes); err != nil {
 		return "", fmt.Errorf("generate cache lock token: %w", err)
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
 
-func defaultJitter(max time.Duration) time.Duration {
-	if max <= 0 {
+func defaultJitter(maxDuration time.Duration) time.Duration {
+	if maxDuration <= 0 {
 		return 0
 	}
-	value, err := cryptorand.Int(cryptorand.Reader, new(big.Int).SetInt64(int64(max)+1))
+
+	value, err := cryptorand.Int(cryptorand.Reader, new(big.Int).SetInt64(int64(maxDuration)+1))
+
 	if err != nil {
 		return 0
 	}
+
 	return time.Duration(value.Int64())
 }
 
-func sleepContext(ctx context.Context, duration time.Duration) error {
+func sleepContext(
+	ctx context.Context,
+	duration time.Duration,
+) error {
 	timer := time.NewTimer(duration)
 	defer timer.Stop()
 	select {

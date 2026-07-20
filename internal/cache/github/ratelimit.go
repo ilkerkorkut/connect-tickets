@@ -24,6 +24,7 @@ func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
 	if g == nil || g.store == nil {
 		return time.Time{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "gateway is not initialized", nil)
 	}
+
 	value, err := g.store.Get(ctx, cooldownKey)
 	if errors.Is(err, goredis.Nil) {
 		return time.Time{}, nil
@@ -31,6 +32,7 @@ func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, coordinationError(err)
 	}
+
 	milliseconds, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		if deleteErr := g.store.Delete(ctx, cooldownKey); deleteErr != nil {
@@ -38,6 +40,7 @@ func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
 		}
 		return time.Time{}, nil
 	}
+
 	until := time.UnixMilli(milliseconds).UTC()
 	if !until.After(g.now()) {
 		if err := g.store.Delete(ctx, cooldownKey); err != nil {
@@ -45,6 +48,7 @@ func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
 		}
 		return time.Time{}, nil
 	}
+
 	return until, nil
 }
 
