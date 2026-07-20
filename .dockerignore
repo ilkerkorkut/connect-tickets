@@ -1,0 +1,9 @@
+.env
+.agents
+.claude
+.codex
+.zcode
+bin
+graphify-out
+coverage.*
+*.out
