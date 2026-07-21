@@ -2,8 +2,8 @@
 set -euo pipefail
 
 api_url="${API_URL:-http://localhost:18080}"
-owner="${GITHUB_OWNER:-earendil-works}"
-name="${GITHUB_NAME:-pi}"
+owner="${GITHUB_OWNER:-octocat}"
+name="${GITHUB_NAME:-hello-world}"
 timeout_seconds="${POLL_TIMEOUT_SECONDS:-60}"
 work_dir="$(mktemp -d)"
 repo_id=""
