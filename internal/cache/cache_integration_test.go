@@ -1,6 +1,6 @@
 //go:build integration
 
-package github
+package cache
 
 import (
 	"context"

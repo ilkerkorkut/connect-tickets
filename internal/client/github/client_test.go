@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ilkerkorkut/connect-tickets/config"
+	"github.com/ilkerkorkut/connect-tickets/internal/client"
 )
 
 func TestFetchRepositoryMapsFieldsAndHeaders(t *testing.T) {
@@ -173,30 +174,30 @@ func TestParseRetryAfter(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, time.July, 20, 10, 0, 0, 0, time.UTC)
-	if got, ok := ParseRetryAfter("7", now); !ok || got != 7*time.Second {
+	if got, ok := client.ParseRetryAfter("7", now); !ok || got != 7*time.Second {
 		t.Fatalf("delta parse = %s, %v", got, ok)
 	}
 	when := now.Add(3 * time.Minute)
-	if got, ok := ParseRetryAfter(when.Format(http.TimeFormat), now); !ok || got != 3*time.Minute {
+	if got, ok := client.ParseRetryAfter(when.Format(http.TimeFormat), now); !ok || got != 3*time.Minute {
 		t.Fatalf("date parse = %s, %v", got, ok)
 	}
-	if _, ok := ParseRetryAfter("invalid", now); ok {
+	if _, ok := client.ParseRetryAfter("invalid", now); ok {
 		t.Fatal("invalid retry-after parsed successfully")
 	}
 }
 
-func newTestClient(t *testing.T, baseURL, token string) *Client {
+func newTestClient(t *testing.T, baseURL, token string) *githubClient {
 	t.Helper()
 	return newTestClientWithHTTP(t, baseURL, nil, token)
 }
 
-func newTestClientWithHTTP(t *testing.T, baseURL string, client *http.Client, tokens ...string) *Client {
+func newTestClientWithHTTP(t *testing.T, baseURL string, httpClient *http.Client, tokens ...string) *githubClient {
 	t.Helper()
 	token := ""
 	if len(tokens) > 0 {
 		token = tokens[0]
 	}
-	githubClient, err := NewClient(config.GitHubConfig{
+	c, err := NewClient(config.GitHubConfig{
 		BaseURL:             baseURL,
 		Token:               token,
 		Timeout:             time.Second,
@@ -204,11 +205,11 @@ func newTestClientWithHTTP(t *testing.T, baseURL string, client *http.Client, to
 		MaxIdleConns:        2,
 		MaxIdleConnsPerHost: 1,
 		IdleConnTimeout:     time.Second,
-	}, client)
+	}, httpClient)
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
-	return githubClient
+	return c.(*githubClient)
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

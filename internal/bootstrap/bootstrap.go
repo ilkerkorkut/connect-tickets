@@ -13,8 +13,8 @@ import (
 
 	"github.com/ilkerkorkut/connect-tickets/config"
 	"github.com/ilkerkorkut/connect-tickets/ent"
-	redisclient "github.com/ilkerkorkut/connect-tickets/internal/cache/redis"
 	database "github.com/ilkerkorkut/connect-tickets/pkg/postgresql"
+	redisclient "github.com/ilkerkorkut/connect-tickets/pkg/redis"
 )
 
 type Closer = io.Closer

@@ -1,15 +1,18 @@
-package github
+package client
 
 import (
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ilkerkorkut/connect-tickets/internal/client"
 )
 
-type RateLimit = client.RateLimit
+type RateLimit struct {
+	Status     int
+	RetryAfter time.Duration
+	Remaining  *int
+	ResetAt    *time.Time
+}
 
 func ParseRetryAfter(value string, now time.Time) (time.Duration, bool) {
 	value = strings.TrimSpace(value)
@@ -32,7 +35,7 @@ func ParseRetryAfter(value string, now time.Time) (time.Duration, bool) {
 	return 0, true
 }
 
-func rateLimitFrom(response *http.Response, now time.Time) RateLimit {
+func RateLimitFrom(response *http.Response, now time.Time) RateLimit {
 	metadata := RateLimit{Status: response.StatusCode}
 	if retryAfter, ok := ParseRetryAfter(response.Header.Get("Retry-After"), now); ok {
 		metadata.RetryAfter = retryAfter

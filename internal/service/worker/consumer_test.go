@@ -13,6 +13,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/ilkerkorkut/connect-tickets/config"
+	"github.com/ilkerkorkut/connect-tickets/internal/client"
 	githubgateway "github.com/ilkerkorkut/connect-tickets/internal/client/github"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
 	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
@@ -247,7 +248,7 @@ func TestTransientRetryUsesBoundedExponentialJitter(t *testing.T) {
 func TestRateLimitRetryNeverPrecedesUpstreamRequirement(t *testing.T) {
 	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
 	resetAt := now.Add(8 * time.Second)
-	err := &githubgateway.RequestError{Kind: githubgateway.ErrRateLimited, RateLimit: githubgateway.RateLimit{RetryAfter: 5 * time.Second, ResetAt: &resetAt}}
+	err := &githubgateway.RequestError{Kind: githubgateway.ErrRateLimited, RateLimit: client.RateLimit{RetryAfter: 5 * time.Second, ResetAt: &resetAt}}
 	code, retryAt, retry := classify(err, now, 1, 3, func(time.Duration) time.Duration { return 0 })
 	if !retry || code != "github_rate_limited" || retryAt.Before(resetAt) {
 		t.Fatalf("code=%q retry=%t retryAt=%s reset=%s", code, retry, retryAt, resetAt)
@@ -256,7 +257,7 @@ func TestRateLimitRetryNeverPrecedesUpstreamRequirement(t *testing.T) {
 
 func TestRateLimitRetryAlsoHonorsExponentialBackoff(t *testing.T) {
 	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
-	err := &githubgateway.RequestError{Kind: githubgateway.ErrRateLimited, RateLimit: githubgateway.RateLimit{RetryAfter: 500 * time.Millisecond}}
+	err := &githubgateway.RequestError{Kind: githubgateway.ErrRateLimited, RateLimit: client.RateLimit{RetryAfter: 500 * time.Millisecond}}
 	_, retryAt, retry := classify(err, now, 1, 3, func(time.Duration) time.Duration { return 0 })
 	want := now.Add(time.Second)
 	if !retry || !retryAt.Equal(want) {

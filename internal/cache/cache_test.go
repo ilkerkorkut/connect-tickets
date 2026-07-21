@@ -1,4 +1,4 @@
-package github
+package cache
 
 import (
 	"context"
@@ -253,13 +253,17 @@ func (fetchFunc) Cooldown(context.Context) (time.Time, error) {
 	return time.Time{}, nil
 }
 
+func (f fetchFunc) GitHub() client.GitHub {
+	return f
+}
+
 func testRepository(owner, name string, stars int) Repository {
 	return Repository{Owner: owner, Name: name, FullName: owner + "/" + name, Stars: stars, HTMLURL: "https://github.com/" + owner + "/" + name, FetchedAt: time.Unix(0, 0).UTC()}
 }
 
-func newTestGateway(t *testing.T, upstream client.GitHub, store *fakeStore, clock *fakeClock) *Gateway {
+func newTestGateway(t *testing.T, upstream client.APIClient, store *fakeStore, clock *fakeClock) *CacheGateway {
 	t.Helper()
-	gateway := newGateway(upstream, store, config.CacheConfig{TTL: 5 * time.Minute, LockTTL: time.Second, LockWait: 100 * time.Millisecond})
+	gateway := newCacheGateway(upstream, store, config.CacheConfig{TTL: 5 * time.Minute, LockTTL: time.Second, LockWait: 100 * time.Millisecond})
 	gateway.now = clock.Now
 	gateway.jitter = func(time.Duration) time.Duration { return 0 }
 	return gateway

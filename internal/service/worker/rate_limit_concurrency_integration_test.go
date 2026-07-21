@@ -20,7 +20,6 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent"
 	"github.com/ilkerkorkut/connect-tickets/ent/batchjob"
 	"github.com/ilkerkorkut/connect-tickets/ent/outboxevent"
-	githubcache "github.com/ilkerkorkut/connect-tickets/internal/cache/github"
 	githubclient "github.com/ilkerkorkut/connect-tickets/internal/client/github"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
 	"github.com/ilkerkorkut/connect-tickets/internal/testkit"
@@ -106,13 +105,13 @@ func newRateLimitRedisClient(t *testing.T, address string) *redis.Client {
 	return client
 }
 
-func newRateLimitGateway(t *testing.T, cache *redis.Client, baseURL string) *githubcache.Gateway {
+func newRateLimitGateway(t *testing.T, cache *redis.Client, baseURL string) *cache.Gateway {
 	t.Helper()
 	upstream, err := githubclient.NewClient(config.GitHubConfig{BaseURL: baseURL, Timeout: 2 * time.Second, UserAgent: "rate-limit-concurrency", MaxIdleConns: concurrentRateLimitWorkers, MaxIdleConnsPerHost: concurrentRateLimitWorkers, IdleConnTimeout: time.Minute}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := githubcache.NewGateway(upstream, cache, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
+	gateway, err := cache.NewGateway(upstream, cache, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

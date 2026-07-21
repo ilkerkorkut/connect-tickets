@@ -21,7 +21,6 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent"
 	entrepository "github.com/ilkerkorkut/connect-tickets/ent/repository"
 	"github.com/ilkerkorkut/connect-tickets/ent/repositorychange"
-	githubcache "github.com/ilkerkorkut/connect-tickets/internal/cache/github"
 	githubclient "github.com/ilkerkorkut/connect-tickets/internal/client/github"
 	"github.com/ilkerkorkut/connect-tickets/internal/service/repository"
 	"github.com/ilkerkorkut/connect-tickets/internal/testkit"
@@ -82,7 +81,7 @@ func newAPI(t *testing.T, log *scenarioLogger, client *ent.Client, cache *redis.
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := githubcache.NewGateway(upstream, cache, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
+	gateway, err := cache.NewGateway(upstream, cache, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

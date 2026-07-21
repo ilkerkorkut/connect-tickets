@@ -87,20 +87,6 @@ func (s *Service) CreateRefreshAll(ctx context.Context) (uuid.UUID, error) {
 	return batchID, nil
 }
 
-func refreshPayload(message kafka.RefreshMessage) (map[string]any, error) {
-	payload, err := json.Marshal(message)
-	if err != nil {
-		return nil, fmt.Errorf("encode refresh outbox payload: %w", err)
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(payload, &result); err != nil {
-		return nil, fmt.Errorf("decode refresh outbox payload: %w", err)
-	}
-
-	return result, nil
-}
-
 func (s *Service) Status(ctx context.Context, id uuid.UUID) (Status, error) {
 	b, err := s.client.Batch.Query().Where(entbatch.IDEQ(id)).Only(ctx)
 	if ent.IsNotFound(err) {
@@ -125,6 +111,20 @@ func (s *Service) Status(ctx context.Context, id uuid.UUID) (Status, error) {
 		default:
 			result.Pending++
 		}
+	}
+
+	return result, nil
+}
+
+func refreshPayload(message kafka.RefreshMessage) (map[string]any, error) {
+	payload, err := json.Marshal(message)
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh outbox payload: %w", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(payload, &result); err != nil {
+		return nil, fmt.Errorf("decode refresh outbox payload: %w", err)
 	}
 
 	return result, nil

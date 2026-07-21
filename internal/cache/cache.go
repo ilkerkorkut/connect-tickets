@@ -1,4 +1,4 @@
-package github
+package cache
 
 import (
 	"context"
@@ -23,8 +23,8 @@ const (
 	cooldownKey           = "github:rate-limit:cooldown-until:v1"
 )
 
-type Gateway struct {
-	upstream     client.GitHub
+type CacheGateway struct {
+	upstream     client.APIClient
 	store        coordinationStore
 	cacheTTL     time.Duration
 	lockTTL      time.Duration
@@ -36,24 +36,24 @@ type Gateway struct {
 	newToken     func() (string, error)
 }
 
-func NewGateway(
-	upstream client.GitHub,
+func NewCacheGateway(
+	upstream client.APIClient,
 	redisClient *goredis.Client,
 	cacheConfig config.CacheConfig,
 	githubTimeout time.Duration,
-) (*Gateway, error) {
+) (*CacheGateway, error) {
 	if upstream == nil || redisClient == nil || cacheConfig.TTL <= 0 || cacheConfig.LockTTL <= githubTimeout || cacheConfig.LockWait <= 0 || githubTimeout <= 0 {
 		return nil, ErrInvalidConfig
 	}
-	return newGateway(upstream, redisStore{client: redisClient}, cacheConfig), nil
+	return newCacheGateway(upstream, redisStore{client: redisClient}, cacheConfig), nil
 }
 
-func newGateway(
-	upstream client.GitHub,
+func newCacheGateway(
+	upstream client.APIClient,
 	store coordinationStore,
 	cacheConfig config.CacheConfig,
-) *Gateway {
-	return &Gateway{
+) *CacheGateway {
+	return &CacheGateway{
 		upstream:     upstream,
 		store:        store,
 		cacheTTL:     cacheConfig.TTL,
@@ -67,11 +67,11 @@ func newGateway(
 	}
 }
 
-func (g *Gateway) FetchRepository(ctx context.Context, owner, name string) (Repository, error) {
+func (g *CacheGateway) FetchRepository(ctx context.Context, owner, name string) (Repository, error) {
 	return g.fetch(ctx, owner, name, false)
 }
 
-func (g *Gateway) RefreshRepository(ctx context.Context, owner, name string) (Repository, error) {
+func (g *CacheGateway) RefreshRepository(ctx context.Context, owner, name string) (Repository, error) {
 	if g == nil {
 		return Repository{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "gateway is not initialized", nil)
 	}
@@ -87,7 +87,7 @@ func (g *Gateway) RefreshRepository(ctx context.Context, owner, name string) (Re
 	return g.fetch(ctx, owner, name, true)
 }
 
-func (g *Gateway) fetch(
+func (g *CacheGateway) fetch(
 	ctx context.Context,
 	owner, name string,
 	refreshed bool,
@@ -150,7 +150,7 @@ func (g *Gateway) fetch(
 	}
 }
 
-func (g *Gateway) lockWaitStep(deadline time.Time) time.Duration {
+func (g *CacheGateway) lockWaitStep(deadline time.Time) time.Duration {
 	wait := g.pollInterval + g.jitter(g.pollInterval/2)
 	if remaining := deadline.Sub(g.now()); wait > remaining {
 		return remaining
@@ -158,7 +158,7 @@ func (g *Gateway) lockWaitStep(deadline time.Time) time.Duration {
 	return wait
 }
 
-func (g *Gateway) fetchWithLock(
+func (g *CacheGateway) fetchWithLock(
 	ctx context.Context,
 	owner, name, key, token string,
 ) (Repository, error) {
@@ -174,7 +174,7 @@ func (g *Gateway) fetchWithLock(
 		return Repository{}, err
 	}
 
-	repository, err := g.upstream.FetchRepository(ctx, owner, name)
+	repository, err := g.upstream.GitHub().FetchRepository(ctx, owner, name)
 	if err != nil {
 		logging.Debug(ctx, "github upstream fetch failed", "owner", owner, "name", name, "error_kind", gatewayErrorKind(err))
 		if cooldownErr := g.RecordCooldown(ctx, err); cooldownErr != nil {
@@ -196,7 +196,7 @@ func (g *Gateway) fetchWithLock(
 	return repository, nil
 }
 
-func (g *Gateway) cacheGet(
+func (g *CacheGateway) cacheGet(
 	ctx context.Context,
 	key string,
 ) (Repository, bool, error) {

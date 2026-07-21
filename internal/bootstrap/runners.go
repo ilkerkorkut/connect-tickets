@@ -9,10 +9,10 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
+	"github.com/ilkerkorkut/connect-tickets/internal/cache"
 
 	"github.com/ilkerkorkut/connect-tickets/config"
-	githubcache "github.com/ilkerkorkut/connect-tickets/internal/cache/github"
-	githubclient "github.com/ilkerkorkut/connect-tickets/internal/client/github"
+	"github.com/ilkerkorkut/connect-tickets/internal/client/apiclient"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
 	"github.com/ilkerkorkut/connect-tickets/internal/producer/outbox"
 	"github.com/ilkerkorkut/connect-tickets/internal/route"
@@ -35,11 +35,11 @@ var (
 	defaultLogSink io.Writer = os.Stdout
 
 	runAPIFn = func(ctx context.Context, res *Resources, cfg config.Config) error {
-		client, err := githubclient.NewClient(cfg.GitHub, nil)
+		clientApi, err := apiclient.NewClient(cfg)
 		if err != nil {
 			return err
 		}
-		gateway, err := githubcache.NewGateway(client, res.Redis, cfg.Cache, cfg.GitHub.Timeout)
+		gateway, err := cache.NewCacheGateway(clientApi, res.Redis, cfg.Cache, cfg.GitHub.Timeout)
 		if err != nil {
 			return err
 		}
@@ -54,11 +54,11 @@ var (
 		return route.Serve(ctx, server, readiness, cfg.App.ShutdownTimeout, res.Logger)
 	}
 	runWorkerFn = func(ctx context.Context, res *Resources, cfg config.Config) error {
-		client, err := githubclient.NewClient(cfg.GitHub, nil)
+		github, err := apiclient.NewClient(cfg)
 		if err != nil {
 			return err
 		}
-		gateway, err := githubcache.NewGateway(client, res.Redis, cfg.Cache, cfg.GitHub.Timeout)
+		gateway, err := cache.NewCacheGateway(github, res.Redis, cfg.Cache, cfg.GitHub.Timeout)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package github
+package cache
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
-func (g *Gateway) RecordCooldown(ctx context.Context, fetchErr error) error {
+func (g *CacheGateway) RecordCooldown(ctx context.Context, fetchErr error) error {
 	until, ok := cooldownUntil(fetchErr, g.now())
 	if !ok {
 		return nil
@@ -22,7 +22,7 @@ func (g *Gateway) RecordCooldown(ctx context.Context, fetchErr error) error {
 	return nil
 }
 
-func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
+func (g *CacheGateway) Cooldown(ctx context.Context) (time.Time, error) {
 	if g == nil || g.store == nil {
 		return time.Time{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "gateway is not initialized", nil)
 	}
@@ -54,7 +54,7 @@ func (g *Gateway) Cooldown(ctx context.Context) (time.Time, error) {
 	return until, nil
 }
 
-func (g *Gateway) WaitForCooldown(ctx context.Context) error {
+func (g *CacheGateway) WaitForCooldown(ctx context.Context) error {
 	until, err := g.Cooldown(ctx)
 	if err != nil || until.IsZero() {
 		return err
@@ -66,7 +66,7 @@ func (g *Gateway) WaitForCooldown(ctx context.Context) error {
 	return nil
 }
 
-func (g *Gateway) checkCooldown(ctx context.Context) error {
+func (g *CacheGateway) checkCooldown(ctx context.Context) error {
 	until, err := g.Cooldown(ctx)
 	if err != nil || until.IsZero() {
 		return err

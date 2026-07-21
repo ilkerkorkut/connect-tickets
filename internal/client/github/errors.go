@@ -18,10 +18,6 @@ var (
 	ErrCacheCoordinationUnavailable = client.ErrCacheCoordinationUnavailable
 )
 
-func requestError(kind error, status int, rateLimit RateLimit, diagnostic string, cause error) error {
-	return client.NewRequestError(kind, status, rateLimit, diagnostic, cause)
-}
-
-func NewRequestError(kind error, status int, rateLimit RateLimit, diagnostic string, cause error) error {
+func NewRequestError(kind error, status int, rateLimit client.RateLimit, diagnostic string, cause error) error {
 	return client.NewRequestError(kind, status, rateLimit, diagnostic, cause)
 }

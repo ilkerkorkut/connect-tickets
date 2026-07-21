@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	ErrNotFound                     = errors.New("github repository not found")
-	ErrUnauthorized                 = errors.New("github request unauthorized")
-	ErrRateLimited                  = errors.New("github rate limited")
-	ErrServer                       = errors.New("github server error")
-	ErrTimeout                      = errors.New("github request timed out")
-	ErrNetwork                      = errors.New("github network failure")
-	ErrInvalidResponse              = errors.New("github invalid response")
-	ErrCanceled                     = errors.New("github request canceled")
-	ErrInvalidRequest               = errors.New("invalid github request")
-	ErrInvalidConfig                = errors.New("invalid github client configuration")
+	ErrNotFound                     = errors.New("provider repository not found")
+	ErrUnauthorized                 = errors.New("provider request unauthorized")
+	ErrRateLimited                  = errors.New("provider rate limited")
+	ErrServer                       = errors.New("provider server error")
+	ErrTimeout                      = errors.New("provider request timed out")
+	ErrNetwork                      = errors.New("provider network failure")
+	ErrInvalidResponse              = errors.New("provider invalid response")
+	ErrCanceled                     = errors.New("provider request canceled")
+	ErrInvalidRequest               = errors.New("invalid provider request")
+	ErrInvalidConfig                = errors.New("invalid provider client configuration")
 	ErrCacheCoordinationUnavailable = errors.New("cache coordination unavailable")
 )
 
@@ -29,12 +29,12 @@ type RequestError struct {
 
 func (e *RequestError) Error() string {
 	if e == nil || e.Kind == nil {
-		return "github request failed"
+		return "provider request failed"
 	}
 	if e.Status > 0 {
-		return fmt.Sprintf("github request failed: %s (status %d)", e.Kind, e.Status)
+		return fmt.Sprintf("provider request failed: %s (status %d)", e.Kind, e.Status)
 	}
-	return fmt.Sprintf("github request failed: %s", e.Kind)
+	return fmt.Sprintf("provider request failed: %s", e.Kind)
 }
 
 func (e *RequestError) Unwrap() error {

@@ -13,11 +13,18 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/ilkerkorkut/connect-tickets/config"
+	"github.com/ilkerkorkut/connect-tickets/internal/client"
 )
 
 const maxResponseBodyBytes int64 = 1 << 20
 
-type Client struct {
+type GitHubClient interface {
+	FetchRepository(context.Context, string, string) (Repository, error)
+	RefreshRepository(context.Context, string, string) (Repository, error)
+	Cooldown(context.Context) (time.Time, error)
+}
+
+type githubClient struct {
 	resty     *resty.Client
 	baseURL   *url.URL
 	token     string
@@ -26,13 +33,13 @@ type Client struct {
 	now       func() time.Time
 }
 
-func NewClient(cfg config.GitHubConfig, httpClient *http.Client) (*Client, error) {
+func NewClient(cfg config.GitHubConfig, httpClient *http.Client) (GitHubClient, error) {
 	if cfg.Timeout <= 0 || strings.TrimSpace(cfg.UserAgent) == "" {
-		return nil, ErrInvalidConfig
+		return nil, client.ErrInvalidConfig
 	}
 	baseURL, err := url.Parse(cfg.BaseURL)
 	if err != nil || baseURL.Scheme == "" || baseURL.Host == "" || (baseURL.Scheme != "http" && baseURL.Scheme != "https") {
-		return nil, ErrInvalidConfig
+		return nil, client.ErrInvalidConfig
 	}
 	if httpClient == nil {
 		httpClient = newHTTPClient(cfg)
@@ -46,7 +53,7 @@ func NewClient(cfg config.GitHubConfig, httpClient *http.Client) (*Client, error
 	if cfg.Token != "" {
 		client.SetAuthToken(cfg.Token)
 	}
-	return &Client{
+	return &githubClient{
 		resty:     client,
 		baseURL:   baseURL,
 		token:     cfg.Token,
@@ -80,12 +87,12 @@ func newHTTPClient(cfg config.GitHubConfig) *http.Client {
 	}
 }
 
-func (c *Client) FetchRepository(ctx context.Context, owner, name string) (Repository, error) {
+func (c *githubClient) FetchRepository(ctx context.Context, owner, name string) (Repository, error) {
 	if c == nil || c.resty == nil || c.baseURL == nil {
-		return Repository{}, requestError(ErrInvalidConfig, 0, RateLimit{}, "client is not initialized", nil)
+		return Repository{}, client.NewRequestError(client.ErrInvalidConfig, 0, client.RateLimit{}, "client is not initialized", nil)
 	}
 	if !validPathSegment(owner) || !validPathSegment(name) {
-		return Repository{}, requestError(ErrInvalidRequest, 0, RateLimit{}, "owner and name must be non-empty path segments", nil)
+		return Repository{}, client.NewRequestError(client.ErrInvalidRequest, 0, client.RateLimit{}, "owner and name must be non-empty path segments", nil)
 	}
 	if err := ctx.Err(); err != nil {
 		return Repository{}, cancellationError(err)
@@ -96,7 +103,7 @@ func (c *Client) FetchRepository(ctx context.Context, owner, name string) (Repos
 	response, err := c.resty.R().SetContext(requestContext).Get("/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name))
 	if err != nil {
 		if errors.Is(err, resty.ErrResponseBodyTooLarge) {
-			return Repository{}, requestError(ErrInvalidResponse, 0, RateLimit{}, "response body exceeds limit", err)
+			return Repository{}, client.NewRequestError(client.ErrInvalidResponse, 0, client.RateLimit{}, "response body exceeds limit", err)
 		}
 		return Repository{}, c.transportError(ctx, requestContext, err)
 	}
@@ -108,13 +115,13 @@ func (c *Client) FetchRepository(ctx context.Context, owner, name string) (Repos
 	var payload repositoryResponse
 	decoder := json.NewDecoder(strings.NewReader(string(response.Body())))
 	if err := decoder.Decode(&payload); err != nil {
-		return Repository{}, requestError(ErrInvalidResponse, response.StatusCode(), rateLimitFrom(response.RawResponse, c.now()), "decode repository response", err)
+		return Repository{}, client.NewRequestError(client.ErrInvalidResponse, response.StatusCode(), client.RateLimitFrom(response.RawResponse, c.now()), "decode repository response", err)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return Repository{}, requestError(ErrInvalidResponse, response.StatusCode(), rateLimitFrom(response.RawResponse, c.now()), "repository response contains trailing data", err)
+		return Repository{}, client.NewRequestError(client.ErrInvalidResponse, response.StatusCode(), client.RateLimitFrom(response.RawResponse, c.now()), "repository response contains trailing data", err)
 	}
 	if payload.Owner.Login == nil || payload.Name == nil || payload.FullName == nil || payload.Stargazers == nil || payload.HTMLURL == nil || *payload.Owner.Login == "" || *payload.Name == "" || *payload.FullName == "" || *payload.HTMLURL == "" || *payload.Stargazers < 0 {
-		return Repository{}, requestError(ErrInvalidResponse, response.StatusCode(), rateLimitFrom(response.RawResponse, c.now()), "repository response is missing required fields", nil)
+		return Repository{}, client.NewRequestError(client.ErrInvalidResponse, response.StatusCode(), client.RateLimitFrom(response.RawResponse, c.now()), "repository response is missing required fields", nil)
 	}
 
 	return Repository{
@@ -129,45 +136,45 @@ func (c *Client) FetchRepository(ctx context.Context, owner, name string) (Repos
 	}, nil
 }
 
-func (c *Client) RefreshRepository(ctx context.Context, owner, name string) (Repository, error) {
+func (c *githubClient) RefreshRepository(ctx context.Context, owner, name string) (Repository, error) {
 	return c.FetchRepository(ctx, owner, name)
 }
 
-func (c *Client) Cooldown(context.Context) (time.Time, error) {
+func (c *githubClient) Cooldown(context.Context) (time.Time, error) {
 	return time.Time{}, nil
 }
 
-func (c *Client) transportError(callerContext, requestContext context.Context, err error) error {
+func (c *githubClient) transportError(callerContext, requestContext context.Context, err error) error {
 	if callerErr := callerContext.Err(); callerErr != nil {
 		return cancellationError(callerErr)
 	}
 	if errors.Is(requestContext.Err(), context.DeadlineExceeded) {
-		return requestError(ErrTimeout, 0, RateLimit{}, "request deadline exceeded", err)
+		return client.NewRequestError(client.ErrTimeout, 0, client.RateLimit{}, "request deadline exceeded", err)
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return requestError(ErrTimeout, 0, RateLimit{}, "http client deadline exceeded", err)
+		return client.NewRequestError(client.ErrTimeout, 0, client.RateLimit{}, "http client deadline exceeded", err)
 	}
-	return requestError(ErrNetwork, 0, RateLimit{}, "transport request failed", err)
+	return client.NewRequestError(client.ErrNetwork, 0, client.RateLimit{}, "transport request failed", err)
 }
 
-func (c *Client) statusError(response *http.Response, body []byte) error {
+func (c *githubClient) statusError(response *http.Response, body []byte) error {
 	diagnostic := boundedDiagnostic(body)
-	metadata := rateLimitFrom(response, c.now())
+	metadata := client.RateLimitFrom(response, c.now())
 	switch {
 	case response.StatusCode == http.StatusNotFound:
-		return requestError(ErrNotFound, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrNotFound, response.StatusCode, metadata, diagnostic, nil)
 	case response.StatusCode == http.StatusUnauthorized:
-		return requestError(ErrUnauthorized, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrUnauthorized, response.StatusCode, metadata, diagnostic, nil)
 	case response.StatusCode == http.StatusTooManyRequests:
-		return requestError(ErrRateLimited, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrRateLimited, response.StatusCode, metadata, diagnostic, nil)
 	case response.StatusCode == http.StatusForbidden && isRateLimited(response, diagnostic):
-		return requestError(ErrRateLimited, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrRateLimited, response.StatusCode, metadata, diagnostic, nil)
 	case response.StatusCode == http.StatusForbidden:
-		return requestError(ErrUnauthorized, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrUnauthorized, response.StatusCode, metadata, diagnostic, nil)
 	case response.StatusCode >= http.StatusInternalServerError:
-		return requestError(ErrServer, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrServer, response.StatusCode, metadata, diagnostic, nil)
 	default:
-		return requestError(ErrInvalidResponse, response.StatusCode, metadata, diagnostic, nil)
+		return client.NewRequestError(client.ErrInvalidResponse, response.StatusCode, metadata, diagnostic, nil)
 	}
 }
 
@@ -202,5 +209,5 @@ func isRateLimited(response *http.Response, diagnostic string) bool {
 }
 
 func cancellationError(cause error) error {
-	return requestError(ErrCanceled, 0, RateLimit{}, "caller canceled request", cause)
+	return client.NewRequestError(client.ErrCanceled, 0, client.RateLimit{}, "caller canceled request", cause)
 }
