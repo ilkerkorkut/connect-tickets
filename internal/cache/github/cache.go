@@ -13,6 +13,7 @@ import (
 
 	"github.com/ilkerkorkut/connect-tickets/config"
 	"github.com/ilkerkorkut/connect-tickets/internal/client"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -107,8 +108,10 @@ func (g *Gateway) fetch(
 	if repository, hit, err := g.cacheGet(ctx, key); err != nil {
 		return Repository{}, err
 	} else if hit && !refreshed {
+		logging.Debug(ctx, "github cache hit", "owner", owner, "name", name)
 		return repository, nil
 	}
+	logging.Debug(ctx, "github cache miss", "owner", owner, "name", name, "refreshed", refreshed)
 
 	deadline := g.now().Add(g.lockWait)
 	for {
@@ -118,6 +121,7 @@ func (g *Gateway) fetch(
 		if repository, hit, err := g.cacheGet(ctx, key); err != nil {
 			return Repository{}, err
 		} else if hit {
+			logging.Debug(ctx, "github cache hit", "owner", owner, "name", name)
 			return repository, nil
 		}
 		if err := g.checkCooldown(ctx); err != nil {
@@ -133,19 +137,25 @@ func (g *Gateway) fetch(
 			return Repository{}, coordinationError(err)
 		}
 		if acquired {
+			logging.Debug(ctx, "github cache lock acquired", "owner", owner, "name", name)
 			return g.fetchWithLock(ctx, owner, name, key, token)
 		}
 		if !g.now().Before(deadline) {
 			return Repository{}, coordinationError(errors.New("cache lock wait exceeded"))
 		}
-		wait := g.pollInterval + g.jitter(g.pollInterval/2)
-		if remaining := deadline.Sub(g.now()); wait > remaining {
-			wait = remaining
-		}
-		if err := g.sleep(ctx, wait); err != nil {
+		logging.Debug(ctx, "github cache lock waiting", "owner", owner, "name", name)
+		if err := g.sleep(ctx, g.lockWaitStep(deadline)); err != nil {
 			return Repository{}, cancellationError(err)
 		}
 	}
+}
+
+func (g *Gateway) lockWaitStep(deadline time.Time) time.Duration {
+	wait := g.pollInterval + g.jitter(g.pollInterval/2)
+	if remaining := deadline.Sub(g.now()); wait > remaining {
+		return remaining
+	}
+	return wait
 }
 
 func (g *Gateway) fetchWithLock(
@@ -166,11 +176,13 @@ func (g *Gateway) fetchWithLock(
 
 	repository, err := g.upstream.FetchRepository(ctx, owner, name)
 	if err != nil {
+		logging.Debug(ctx, "github upstream fetch failed", "owner", owner, "name", name, "error_kind", gatewayErrorKind(err))
 		if cooldownErr := g.RecordCooldown(ctx, err); cooldownErr != nil {
 			return Repository{}, cooldownErr
 		}
 		return Repository{}, err
 	}
+	logging.Debug(ctx, "github upstream fetch succeeded", "owner", owner, "name", name, "stars", repository.Stars)
 
 	payload, err := json.Marshal(repository)
 	if err != nil {
@@ -179,6 +191,7 @@ func (g *Gateway) fetchWithLock(
 	if err := g.store.Set(ctx, key, string(payload), g.cacheTTL); err != nil {
 		return Repository{}, coordinationError(err)
 	}
+	logging.Debug(ctx, "github cache stored", "owner", owner, "name", name, "ttl", g.cacheTTL)
 
 	return repository, nil
 }
@@ -261,4 +274,28 @@ func sleepContext(
 
 func coordinationError(cause error) error {
 	return requestError(ErrCacheCoordinationUnavailable, 0, RateLimit{}, "redis cache coordination unavailable", cause)
+}
+
+func gatewayErrorKind(err error) string {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return "github_not_found"
+	case errors.Is(err, ErrUnauthorized):
+		return "github_unauthorized"
+	case errors.Is(err, ErrRateLimited):
+		return "github_rate_limited"
+	case errors.Is(err, ErrServer):
+		return "github_server"
+	case errors.Is(err, ErrTimeout):
+		return "github_timeout"
+	case errors.Is(err, ErrNetwork):
+		return "github_network"
+	case errors.Is(err, ErrInvalidResponse):
+		return "github_invalid_response"
+	case errors.Is(err, ErrCanceled):
+		return "github_canceled"
+	case errors.Is(err, ErrCacheCoordinationUnavailable):
+		return "cache_unavailable"
+	}
+	return "unknown"
 }

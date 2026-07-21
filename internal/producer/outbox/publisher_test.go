@@ -1,8 +1,11 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ilkerkorkut/connect-tickets/config"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 type fakeStore struct {
@@ -170,5 +174,79 @@ func TestPublisherRejectsInvalidPayloadWithoutKafka(t *testing.T) {
 	}
 	if len(producer.records) != 0 || len(store.released) != 1 || store.released[0].safeError != "invalid_outbox_payload" {
 		t.Fatalf("records=%d releases=%#v", len(producer.records), store.released)
+	}
+}
+
+func newPublisherCaptureLogger(t *testing.T) (*bytes.Buffer, context.Context) {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	logger, err := logging.NewLogger(config.LogConfig{Level: "debug", Format: "json"}, buf)
+	if err != nil {
+		t.Fatalf("NewLogger: %v", err)
+	}
+	return buf, logging.WithLogger(context.Background(), logger)
+}
+
+func findPublisherLog(buf *bytes.Buffer, message string) map[string]any {
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var record map[string]any
+		if json.Unmarshal([]byte(line), &record) != nil {
+			continue
+		}
+		if record["msg"] == message {
+			return record
+		}
+	}
+	return nil
+}
+
+func TestPublisherLogsPublishedEvent(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{events: []Event{refreshEvent(t)}}
+	producer := &fakeProducer{}
+	publisher, err := NewPublisher(store, producer, publisherConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher.now = func() time.Time { return time.Date(2026, time.July, 20, 13, 0, 0, 0, time.UTC) }
+	buf, ctx := newPublisherCaptureLogger(t)
+	ctx = logging.WithPublisherID(ctx, publisher.owner)
+	if _, err := publisher.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	record := findPublisherLog(buf, "outbox event published")
+	if record == nil {
+		t.Fatalf("missing published log: %s", buf.String())
+	}
+	if record["event_type"] != kafka.RefreshTopic {
+		t.Errorf("event_type = %v", record["event_type"])
+	}
+	if record["publisher_id"] != publisher.owner {
+		t.Errorf("publisher_id = %v, want %s", record["publisher_id"], publisher.owner)
+	}
+}
+
+func TestPublisherLogsPublishFailureSafeError(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{events: []Event{refreshEvent(t)}}
+	producer := &fakeProducer{err: errors.New("kafka unavailable")}
+	publisher, err := NewPublisher(store, producer, publisherConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher.now = func() time.Time { return time.Date(2026, time.July, 20, 13, 0, 0, 0, time.UTC) }
+	buf, ctx := newPublisherCaptureLogger(t)
+	if _, err := publisher.RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	record := findPublisherLog(buf, "outbox publish failed")
+	if record == nil {
+		t.Fatalf("missing publish-failed log: %s", buf.String())
+	}
+	if record["safe_error"] != "kafka_publish_failed" {
+		t.Errorf("safe_error = %v", record["safe_error"])
+	}
+	if strings.Contains(buf.String(), "kafka unavailable") {
+		t.Fatalf("raw kafka error leaked: %s", buf.String())
 	}
 }

@@ -12,6 +12,9 @@ const errorCodeKey = "http_error_code"
 
 func AccessLog(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if logger != nil {
+			c.Request = c.Request.WithContext(logging.WithLogger(c.Request.Context(), logger))
+		}
 		started := time.Now()
 		c.Next()
 		if logger == nil {

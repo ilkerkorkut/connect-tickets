@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 func (h *Handler) ListChanges(c *gin.Context) {
@@ -20,5 +21,6 @@ func (h *Handler) ListChanges(c *gin.Context) {
 	for _, change := range page.Changes {
 		changes = append(changes, gin.H{"cursor": change.Cursor, "event_id": change.EventID, "operation": change.Operation, "repo": change.Repository})
 	}
+	logging.Debug(c.Request.Context(), "changes listed", "count", len(changes), "has_more", page.HasMore)
 	c.JSON(http.StatusOK, gin.H{"changes": changes, "next_cursor": page.NextCursor, "has_more": page.HasMore})
 }

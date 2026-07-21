@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ilkerkorkut/connect-tickets/config"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 type Producer interface {
@@ -42,21 +43,35 @@ func NewPublisher(store ClaimStore, producer Producer, cfg config.OutboxConfig) 
 }
 
 func (p *Publisher) Run(ctx context.Context) error {
+	ctx = logging.WithPublisherID(ctx, p.owner)
+	logging.Event(ctx, "outbox publisher started", "publisher_id", p.owner, "poll_interval", p.poll, "batch_size", p.batchSize, "lease", p.lease)
 	ticker := time.NewTicker(p.poll)
 	defer ticker.Stop()
+	var runErr error
 	for {
 		if _, err := p.RunOnce(ctx); err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return ctx.Err()
+				runErr = ctx.Err()
+				break
 			}
-			return err
+			runErr = err
+			break
 		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			runErr = ctx.Err()
 		case <-ticker.C:
 		}
+		if runErr != nil {
+			break
+		}
 	}
+	if runErr != nil {
+		logging.Error(ctx, "outbox publisher stopped", "publisher_id", p.owner, "err", runErr)
+	} else {
+		logging.Event(ctx, "outbox publisher stopped", "publisher_id", p.owner)
+	}
+	return runErr
 }
 
 func (p *Publisher) RunOnce(ctx context.Context) (int, error) {
@@ -70,6 +85,7 @@ func (p *Publisher) RunOnce(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	logging.Debug(ctx, "outbox poll cycle", "claimed", len(events))
 	for _, event := range events {
 		if err := ctx.Err(); err != nil {
 			return 0, err
@@ -84,17 +100,20 @@ func (p *Publisher) RunOnce(ctx context.Context) (int, error) {
 func (p *Publisher) publish(ctx context.Context, event Event) error {
 	record, err := recordFor(event)
 	if err != nil {
+		logging.Warn(ctx, "outbox publish failed", "event_id", event.EventID, "event_type", event.EventType, "safe_error", "invalid_outbox_payload")
 		return p.release(ctx, event, "invalid_outbox_payload")
 	}
 	if _, err := p.producer.Publish(ctx, record); err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		logging.Warn(ctx, "outbox publish failed", "event_id", event.EventID, "event_type", event.EventType, "safe_error", "kafka_publish_failed")
 		return p.release(ctx, event, "kafka_publish_failed")
 	}
 	if err := p.store.MarkPublished(ctx, event.ID, p.owner, p.now().UTC()); err != nil {
 		return fmt.Errorf("finalize published outbox event: %w", err)
 	}
+	logging.Event(ctx, "outbox event published", "event_id", event.EventID, "event_type", event.EventType, "partition_key", event.PartitionKey, "aggregate_id", event.AggregateID, "attempt", event.PublishAttempts)
 	return nil
 }
 

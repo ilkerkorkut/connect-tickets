@@ -2,15 +2,19 @@ package kafka
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/ilkerkorkut/connect-tickets/config"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 type Consumer struct {
 	group     sarama.ConsumerGroup
+	groupName string
+	logger    *slog.Logger
 	closeOnce sync.Once
 	closeDone chan struct{}
 	closeErr  error
@@ -35,12 +39,19 @@ func NewConsumer(cfg config.KafkaConfig, saramaConfig *sarama.Config) (*Consumer
 	if err != nil {
 		return nil, err
 	}
-	return newConsumer(group), nil
+	return newConsumer(group, ConsumerGroup), nil
 }
 
-func newConsumer(group sarama.ConsumerGroup) *Consumer {
-	c := &Consumer{group: group, closeDone: make(chan struct{}), errors: make(chan error, 1)}
+func newConsumer(group sarama.ConsumerGroup, groupName string) *Consumer {
+	c := &Consumer{group: group, groupName: groupName, closeDone: make(chan struct{}), errors: make(chan error, 1)}
 	go c.forwardErrors()
+	return c
+}
+
+func (c *Consumer) WithLogger(logger *slog.Logger) *Consumer {
+	if c != nil {
+		c.logger = logger
+	}
 	return c
 }
 
@@ -48,15 +59,32 @@ func (c *Consumer) Consume(ctx context.Context, processor RecordProcessor, obser
 	if c == nil || c.group == nil || processor == nil {
 		return ErrInvalidConfig
 	}
-	handler := groupHandler{processor: processor, observer: observer}
+	consumeCtx := ctx
+	if c.logger != nil {
+		consumeCtx = logging.WithConsumerGroup(ctx, c.groupName)
+		logging.ScopedLogger(consumeCtx, c.logger).Info("kafka consume started", "topic", RefreshTopic, "consumer_group", c.groupName)
+	}
+	handler := groupHandler{processor: processor, observer: observer, logger: c.logger, groupName: c.groupName}
+	var terminal error
 	for {
-		if err := ctx.Err(); err != nil {
-			return err
+		if err := consumeCtx.Err(); err != nil {
+			terminal = err
+			break
 		}
-		if err := c.group.Consume(ctx, []string{RefreshTopic}, handler); err != nil {
-			return err
+		if err := c.group.Consume(consumeCtx, []string{RefreshTopic}, handler); err != nil {
+			terminal = err
+			break
 		}
 	}
+	if c.logger != nil {
+		scoped := logging.ScopedLogger(consumeCtx, c.logger)
+		if terminal != nil {
+			scoped.Error("kafka consume stopped", "consumer_group", c.groupName, "err", terminal)
+		} else {
+			scoped.Info("kafka consume stopped", "consumer_group", c.groupName)
+		}
+	}
+	return terminal
 }
 
 func (c *Consumer) Errors() <-chan error {
@@ -103,20 +131,33 @@ func (c *Consumer) forwardErrors() {
 type groupHandler struct {
 	processor RecordProcessor
 	observer  RebalanceObserver
+	logger    *slog.Logger
+	groupName string
 }
 
 func (h groupHandler) Setup(session sarama.ConsumerGroupSession) error {
+	claims := session.Claims()
+	h.logRebalance(session.Context(), "kafka session claimed", claims)
 	if h.observer == nil {
 		return nil
 	}
-	return h.observer.Assigned(session.Context(), session.Claims())
+	return h.observer.Assigned(session.Context(), claims)
 }
 
 func (h groupHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+	claims := session.Claims()
+	h.logRebalance(session.Context(), "kafka session released", claims)
 	if h.observer == nil {
 		return nil
 	}
-	return h.observer.Revoked(session.Context(), session.Claims())
+	return h.observer.Revoked(session.Context(), claims)
+}
+
+func (h groupHandler) logRebalance(ctx context.Context, message string, claims map[string][]int32) {
+	if h.logger == nil {
+		return
+	}
+	logging.ScopedLogger(logging.WithConsumerGroup(ctx, h.groupName), h.logger).Info(message, "consumer_group", h.groupName, "claims", claimSummary(claims))
 }
 
 func (h groupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
@@ -138,4 +179,12 @@ func (h groupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sa
 			}
 		}
 	}
+}
+
+func claimSummary(claims map[string][]int32) map[string]int {
+	summary := make(map[string]int, len(claims))
+	for topic, partitions := range claims {
+		summary[topic] = len(partitions)
+	}
+	return summary
 }

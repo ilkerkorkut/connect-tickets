@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 func (h *Handler) RefreshAll(c *gin.Context) {
@@ -14,6 +15,7 @@ func (h *Handler) RefreshAll(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Event(c.Request.Context(), "refresh all scheduled", "batch_id", id)
 	c.JSON(http.StatusAccepted, gin.H{"batch_id": id.String()})
 }
 
@@ -33,6 +35,7 @@ func (h *Handler) BatchStatus(c *gin.Context) {
 		code, message := safeFailure(failure.Code)
 		failed = append(failed, gin.H{"repo_id": failure.RepositoryID.String(), "reason": gin.H{"code": code, "message": message}})
 	}
+	logging.Debug(c.Request.Context(), "batch status fetched", "batch_id", status.ID, "total", status.Total, "pending", status.Pending, "succeeded", status.Succeeded, "failed", len(failed))
 	c.JSON(http.StatusOK, gin.H{"id": status.ID.String(), "total": status.Total, "pending": status.Pending, "succeeded": status.Succeeded, "failed": failed, "complete": status.CompletedAt != nil})
 }
 

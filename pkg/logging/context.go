@@ -70,6 +70,22 @@ func WorkerIDFrom(ctx context.Context) string {
 	return valueFrom(ctx, string(keyWorkerID))
 }
 
+func WithPublisherID(ctx context.Context, id string) context.Context {
+	return WithValue(ctx, string(keyPublisherID), id)
+}
+
+func PublisherIDFrom(ctx context.Context) string {
+	return valueFrom(ctx, string(keyPublisherID))
+}
+
+func WithConsumerGroup(ctx context.Context, group string) context.Context {
+	return WithValue(ctx, string(keyConsumerGroup), group)
+}
+
+func ConsumerGroupFrom(ctx context.Context) string {
+	return valueFrom(ctx, string(keyConsumerGroup))
+}
+
 func WithBatchID(ctx context.Context, id string) context.Context {
 	return WithValue(ctx, string(keyBatchID), id)
 }
@@ -148,6 +164,8 @@ func ScopedLogger(ctx context.Context, base *slog.Logger) *slog.Logger {
 		Add(string(keyRepoID), RepoIDFrom(ctx)).
 		Add(string(keyEventID), EventIDFrom(ctx)).
 		Add(string(keyWorkerID), WorkerIDFrom(ctx)).
+		Add(string(keyPublisherID), PublisherIDFrom(ctx)).
+		Add(string(keyConsumerGroup), ConsumerGroupFrom(ctx)).
 		Add(string(keyAttempt), valueFrom(ctx, string(keyAttempt))).
 		Add(string(keyTopic), valueFrom(ctx, string(keyTopic))).
 		Add(string(keyPartition), valueFrom(ctx, string(keyPartition))).
@@ -164,4 +182,36 @@ func LoggerFrom(ctx context.Context) *slog.Logger {
 		return l
 	}
 	return nil
+}
+
+func Event(ctx context.Context, msg string, args ...any) {
+	base := LoggerFrom(ctx)
+	if base == nil {
+		return
+	}
+	ScopedLogger(ctx, base).Info(msg, args...)
+}
+
+func Debug(ctx context.Context, msg string, args ...any) {
+	base := LoggerFrom(ctx)
+	if base == nil {
+		return
+	}
+	ScopedLogger(ctx, base).Debug(msg, args...)
+}
+
+func Warn(ctx context.Context, msg string, args ...any) {
+	base := LoggerFrom(ctx)
+	if base == nil {
+		return
+	}
+	ScopedLogger(ctx, base).Warn(msg, args...)
+}
+
+func Error(ctx context.Context, msg string, args ...any) {
+	base := LoggerFrom(ctx)
+	if base == nil {
+		return
+	}
+	ScopedLogger(ctx, base).Error(msg, args...)
 }

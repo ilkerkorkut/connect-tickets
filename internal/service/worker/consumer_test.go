@@ -1,15 +1,21 @@
 package worker
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
+	"github.com/ilkerkorkut/connect-tickets/config"
 	githubgateway "github.com/ilkerkorkut/connect-tickets/internal/client/github"
 	"github.com/ilkerkorkut/connect-tickets/internal/event/kafka"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 type fakeStore struct {
@@ -273,5 +279,79 @@ func TestPermanentFailureAndAttemptExhaustionAreTerminal(t *testing.T) {
 		if retry || code != test.code {
 			t.Fatalf("error=%v code=%q retry=%t", test.err, code, retry)
 		}
+	}
+}
+
+func newWorkerCaptureLogger(t *testing.T) (*bytes.Buffer, *slog.Logger) {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	logger, err := logging.NewLogger(config.LogConfig{Level: "debug", Format: "json"}, buf)
+	if err != nil {
+		t.Fatalf("NewLogger: %v", err)
+	}
+	return buf, logger
+}
+
+func findLogMessage(buf *bytes.Buffer, message string) map[string]any {
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var record map[string]any
+		if json.Unmarshal([]byte(line), &record) != nil {
+			continue
+		}
+		if record["msg"] == message {
+			return record
+		}
+	}
+	return nil
+}
+
+func TestRetryScheduledLoggedWithErrorCode(t *testing.T) {
+	record := workerRecord(t)
+	message, _ := kafka.DecodeRefresh(record.Value, 4096)
+	jobID, _ := uuid.Parse(message.BatchJobID)
+	batchID, _ := uuid.Parse(message.BatchID)
+	repoID, _ := uuid.Parse(message.RepositoryID)
+	store := &fakeStore{job: Job{ID: jobID, BatchID: batchID, RepositoryID: repoID}, state: Claimed, start: 1}
+	gateway := &fakeGateway{err: githubgateway.ErrServer}
+	consumer, _ := NewConsumer(store, gateway, "worker", time.Minute, 3)
+	buf, logger := newWorkerCaptureLogger(t)
+	ctx := logging.WithLogger(context.Background(), logger)
+	settlement, err := consumer.Process(ctx, record)
+	if err != nil || !settlement.Commit || store.retries != 1 {
+		t.Fatalf("settlement=%#v err=%v retries=%d", settlement, err, store.retries)
+	}
+	retryLog := findLogMessage(buf, "refresh retry scheduled")
+	if retryLog == nil {
+		t.Fatalf("missing retry log: %s", buf.String())
+	}
+	if retryLog["error_code"] != "github_transient_failure" {
+		t.Errorf("error_code = %v", retryLog["error_code"])
+	}
+	if retryLog["batch_job_id"] != jobID.String() {
+		t.Errorf("batch_job_id = %v", retryLog["batch_job_id"])
+	}
+}
+
+func TestRefreshRecordProcessedSummaryLogged(t *testing.T) {
+	record := workerRecord(t)
+	message, _ := kafka.DecodeRefresh(record.Value, 4096)
+	jobID, _ := uuid.Parse(message.BatchJobID)
+	batchID, _ := uuid.Parse(message.BatchID)
+	repoID, _ := uuid.Parse(message.RepositoryID)
+	store := &fakeStore{job: Job{ID: jobID, BatchID: batchID, RepositoryID: repoID}, state: Claimed, start: 1}
+	gateway := &fakeGateway{}
+	consumer, _ := NewConsumer(store, gateway, "worker", time.Minute, 3)
+	buf, logger := newWorkerCaptureLogger(t)
+	ctx := logging.WithLogger(context.Background(), logger)
+	settlement, err := consumer.Process(ctx, record)
+	if err != nil || !settlement.Commit {
+		t.Fatalf("settlement=%#v err=%v", settlement, err)
+	}
+	summary := findLogMessage(buf, "refresh record processed")
+	if summary == nil {
+		t.Fatalf("missing summary log: %s", buf.String())
+	}
+	if summary["result"] != "succeeded" {
+		t.Errorf("result = %v", summary["result"])
 	}
 }

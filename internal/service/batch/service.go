@@ -65,6 +65,7 @@ func (s *Service) CreateRefreshAll(ctx context.Context) (uuid.UUID, error) {
 	if err := tx.Commit(); err != nil {
 		return uuid.Nil, fmt.Errorf("commit batch: %w", err)
 	}
+	logging.Event(ctx, "batch created", "batch_id", batchID, "job_count", len(repos))
 	return batchID, nil
 }
 

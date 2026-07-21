@@ -12,6 +12,7 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/internal/request"
 	"github.com/ilkerkorkut/connect-tickets/internal/response"
 	"github.com/ilkerkorkut/connect-tickets/internal/service/repository"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 const maxNotesLength = 4000
@@ -30,6 +31,7 @@ func (h *Handler) CreateRepository(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Event(c.Request.Context(), "repository created", "repo_id", repo.ID, "full_name", repo.FullName)
 	c.JSON(http.StatusCreated, repositoryJSON(repo))
 }
 
@@ -47,6 +49,7 @@ func (h *Handler) ListRepositories(c *gin.Context) {
 	for _, repo := range page.Repositories {
 		repos = append(repos, repositoryJSON(repo))
 	}
+	logging.Debug(c.Request.Context(), "repositories listed", "count", len(repos), "has_more", page.HasMore)
 	c.JSON(http.StatusOK, gin.H{"repos": repos, "next_cursor": page.NextCursor, "has_more": page.HasMore})
 }
 
@@ -56,6 +59,7 @@ func (h *Handler) GetRepository(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Debug(c.Request.Context(), "repository fetched", "repo_id", repo.ID)
 	c.JSON(http.StatusOK, repositoryJSON(repo))
 }
 
@@ -73,6 +77,7 @@ func (h *Handler) UpdateRepository(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Event(c.Request.Context(), "repository notes updated", "repo_id", repo.ID)
 	c.JSON(http.StatusOK, repositoryJSON(repo))
 }
 
@@ -81,6 +86,7 @@ func (h *Handler) DeleteRepository(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Event(c.Request.Context(), "repository deleted", "repo_id", c.Param("id"))
 	c.Status(http.StatusNoContent)
 }
 
@@ -90,6 +96,7 @@ func (h *Handler) RefreshRepository(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+	logging.Event(c.Request.Context(), "repository refreshed", "repo_id", repo.ID, "stars", repo.Stars, "fetched_at", repo.FetchedAt)
 	c.JSON(http.StatusOK, repositoryJSON(repo))
 }
 

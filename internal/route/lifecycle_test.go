@@ -45,7 +45,7 @@ func TestServeListenerMarksUnreadyAndDrainsRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- ServeListener(ctx, server, listener, readiness, time.Second) }()
+	go func() { done <- ServeListener(ctx, server, listener, readiness, time.Second, nil) }()
 
 	responseDone := make(chan error, 1)
 	go func() {

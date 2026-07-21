@@ -51,7 +51,7 @@ var (
 			Health:       readiness,
 		}, cfg.HTTP, res.Logger)
 		server := route.NewServer(router, cfg.HTTP)
-		return route.Serve(ctx, server, readiness, cfg.App.ShutdownTimeout)
+		return route.Serve(ctx, server, readiness, cfg.App.ShutdownTimeout, res.Logger)
 	}
 	runWorkerFn = func(ctx context.Context, res *Resources, cfg config.Config) error {
 		client, err := githubclient.NewClient(cfg.GitHub, nil)
@@ -62,7 +62,8 @@ var (
 		if err != nil {
 			return err
 		}
-		processor, err := worker.NewConsumer(worker.NewStore(res.Ent), gateway, uuid.NewString(), cfg.Worker.LeaseDuration, cfg.Worker.MaxAttempts)
+		workerID := uuid.NewString()
+		processor, err := worker.NewConsumer(worker.NewStore(res.Ent), gateway, workerID, cfg.Worker.LeaseDuration, cfg.Worker.MaxAttempts)
 		if err != nil {
 			return err
 		}
@@ -70,7 +71,13 @@ var (
 		if err != nil {
 			return err
 		}
-		runErr := consumer.Consume(logging.WithLogger(ctx, res.Logger), processor, nil)
+		consumer.WithLogger(res.Logger)
+		workerCtx := logging.WithLogger(logging.WithWorkerID(logging.WithConsumerGroup(ctx, kafka.ConsumerGroup), workerID), res.Logger)
+		logging.Event(workerCtx, "worker started", "worker_id", workerID, "consumer_group", kafka.ConsumerGroup, "lease", cfg.Worker.LeaseDuration, "max_attempts", cfg.Worker.MaxAttempts)
+		go forwardConsumerErrors(workerCtx, consumer, res.Logger)
+
+		runErr := consumer.Consume(workerCtx, processor, nil)
+		logging.Event(workerCtx, "worker stopped", "worker_id", workerID, "err", runErr)
 		closeCtx, cancel := context.WithTimeout(context.Background(), cfg.Worker.ShutdownTimeout)
 		closeErr := consumer.Close(closeCtx)
 		cancel()
@@ -107,4 +114,13 @@ var (
 
 func newLogger(cfg config.LogConfig) (*slog.Logger, error) {
 	return newLoggerFunc(cfg)
+}
+
+func forwardConsumerErrors(ctx context.Context, consumer interface{ Errors() <-chan error }, logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	for err := range consumer.Errors() {
+		logging.ScopedLogger(ctx, logger).Warn("kafka consumer group error", "consumer_group", kafka.ConsumerGroup, "err", err)
+	}
 }

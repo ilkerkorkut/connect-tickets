@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -17,6 +18,7 @@ func (g *Gateway) RecordCooldown(ctx context.Context, fetchErr error) error {
 	if err := g.store.SetLater(ctx, cooldownKey, until, g.now()); err != nil {
 		return coordinationError(err)
 	}
+	logging.Warn(ctx, "github cooldown recorded", "cooldown_until", until)
 	return nil
 }
 

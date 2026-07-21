@@ -56,7 +56,7 @@ func (c *Consumer) Process(ctx context.Context, record *sarama.ConsumerMessage) 
 	started := time.Now()
 	ctx = recordContext(ctx, record)
 	result, err := c.process(ctx, record)
-	c.log(ctx, started, result)
+	c.log(ctx, started, result, err)
 	if err != nil {
 		return kafka.Settlement{}, err
 	}
@@ -66,6 +66,7 @@ func (c *Consumer) Process(ctx context.Context, record *sarama.ConsumerMessage) 
 func (c *Consumer) process(ctx context.Context, record *sarama.ConsumerMessage) (processingResult, error) {
 	message, err := kafka.DecodeRefresh(record.Value, 0)
 	if err != nil {
+		logging.Debug(ctx, "refresh payload invalid")
 		return c.recordInvalid(ctx, invalidRecordID(record.Value), record.Value, "invalid_refresh_message", c.now().UTC())
 	}
 	ctx = messageContext(ctx, message, c.owner)
@@ -74,6 +75,7 @@ func (c *Consumer) process(ctx context.Context, record *sarama.ConsumerMessage) 
 	if err != nil {
 		return processingResult{}, err
 	}
+	logging.Debug(ctx, "refresh job claimed", "claim_state", claimStateName(state))
 	if state == ClaimMissing {
 		return c.recordInvalid(ctx, message.EventID, record.Value, "refresh_job_not_found", now)
 	}
@@ -95,6 +97,7 @@ func (c *Consumer) processClaimed(ctx context.Context, job Job, message kafka.Re
 		return processingResult{}, err
 	}
 	if cooldown.After(now) {
+		logging.Debug(ctx, "refresh deferred by cooldown", "cooldown_until", cooldown)
 		return c.scheduleRetry(ctx, job, message, 0, "github_rate_limited", cooldown.Add(boundedJitter(c.jitter, time.Second)), now)
 	}
 	repository, err := c.store.LoadRepository(ctx, job)
@@ -129,8 +132,10 @@ func (c *Consumer) refresh(ctx context.Context, job Job, message kafka.RefreshMe
 	now := c.now().UTC()
 	code, retryAt, retry := classify(err, now, attempt, c.maxAttempts, c.jitter)
 	if retry {
+		logging.Debug(ctx, "refresh retry scheduled", "attempt", attempt, "error_code", code, "retry_at", retryAt)
 		return c.scheduleRetry(ctx, job, message, attempt, code, retryAt, now)
 	}
+	logging.Debug(ctx, "refresh failed permanently", "attempt", attempt, "error_code", code)
 	return c.completeFailure(ctx, job, message, attempt, code, now)
 }
 
@@ -138,6 +143,7 @@ func (c *Consumer) recordInvalid(ctx context.Context, eventID string, payload []
 	if err := c.store.RecordInvalid(ctx, eventID, payload, code, now); err != nil {
 		return processingResult{}, err
 	}
+	logging.Warn(ctx, "refresh invalid recorded", "error_code", code)
 	return processingResult{result: "invalid", errorCode: code}, nil
 }
 
@@ -155,7 +161,7 @@ func (c *Consumer) scheduleRetry(ctx context.Context, job Job, message kafka.Ref
 	return processingResult{result: "retry_scheduled", errorCode: code}, nil
 }
 
-func (c *Consumer) log(ctx context.Context, started time.Time, result processingResult) {
+func (c *Consumer) log(ctx context.Context, started time.Time, result processingResult, processErr error) {
 	logger := logging.LoggerFrom(ctx)
 	if logger == nil {
 		return
@@ -163,7 +169,28 @@ func (c *Consumer) log(ctx context.Context, started time.Time, result processing
 	if result.result == "" {
 		result.result = "replayable"
 	}
-	logging.ScopedLogger(ctx, logger).Info("refresh record processed", "duration", time.Since(started), "result", result.result, "error_code", result.errorCode)
+	scoped := logging.ScopedLogger(ctx, logger)
+	if processErr != nil {
+		scoped.Error("refresh record processed", "duration", time.Since(started), "result", result.result, "error_code", result.errorCode, "err", processErr.Error())
+		return
+	}
+	scoped.Info("refresh record processed", "duration", time.Since(started), "result", result.result, "error_code", result.errorCode)
+}
+
+func claimStateName(state ClaimState) string {
+	switch state {
+	case Claimed:
+		return "claimed"
+	case ClaimTerminal:
+		return "terminal"
+	case ClaimDeferred:
+		return "deferred"
+	case ClaimBusy:
+		return "busy"
+	case ClaimMissing:
+		return "missing"
+	}
+	return "unknown"
 }
 
 func recordContext(ctx context.Context, record *sarama.ConsumerMessage) context.Context {

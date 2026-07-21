@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent/repository"
 	"github.com/ilkerkorkut/connect-tickets/ent/repositorychange"
 	"github.com/ilkerkorkut/connect-tickets/internal/client"
+	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
 const (
@@ -42,10 +44,13 @@ func (s *Service) Create(ctx context.Context, owner, name string) (Repository, e
 	if s.github == nil {
 		return Repository{}, ErrInvalidInput
 	}
+	logging.Debug(ctx, "github fetch starting", "operation", "create", "owner", owner, "name", name)
 	remote, err := s.github.FetchRepository(ctx, owner, name)
 	if err != nil {
+		logging.Debug(ctx, "github fetch failed", "operation", "create", "owner", owner, "name", name, "error_kind", errorKind(err))
 		return Repository{}, err
 	}
+	logging.Debug(ctx, "github fetch succeeded", "operation", "create", "owner", owner, "name", name, "stars", remote.Stars)
 	return s.createStored(ctx, remote)
 }
 
@@ -257,10 +262,13 @@ func (s *Service) Refresh(ctx context.Context, id string) (Repository, error) {
 	if s.github == nil {
 		return Repository{}, ErrInvalidInput
 	}
+	logging.Debug(ctx, "github fetch starting", "operation", "refresh", "repo_id", local.ID, "owner", local.Owner, "name", local.Name)
 	remote, err := s.github.RefreshRepository(ctx, local.Owner, local.Name)
 	if err != nil {
+		logging.Debug(ctx, "github fetch failed", "operation", "refresh", "repo_id", local.ID, "error_kind", errorKind(err))
 		return Repository{}, err
 	}
+	logging.Debug(ctx, "github fetch succeeded", "operation", "refresh", "repo_id", local.ID, "stars", remote.Stars)
 	parsed := local.ID
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -307,6 +315,7 @@ func (s *Service) createStored(ctx context.Context, remote client.Repository) (R
 		SetNillableDescription(remote.Description).SetStars(remote.Stars).SetNillableLanguage(remote.Language).
 		SetHTMLURL(remote.HTMLURL).SetFetchedAt(remote.FetchedAt).Save(ctx)
 	if ent.IsConstraintError(err) {
+		logging.Debug(ctx, "repository create duplicate", "owner", remote.Owner, "name", remote.Name)
 		return Repository{}, ErrDuplicate
 	}
 	if err != nil {
@@ -387,4 +396,28 @@ func stringPointer(value string) *string {
 		return nil
 	}
 	return &value
+}
+
+func errorKind(err error) string {
+	switch {
+	case errors.Is(err, client.ErrNotFound):
+		return "github_not_found"
+	case errors.Is(err, client.ErrUnauthorized):
+		return "github_unauthorized"
+	case errors.Is(err, client.ErrRateLimited):
+		return "github_rate_limited"
+	case errors.Is(err, client.ErrServer):
+		return "github_server"
+	case errors.Is(err, client.ErrTimeout):
+		return "github_timeout"
+	case errors.Is(err, client.ErrNetwork):
+		return "github_network"
+	case errors.Is(err, client.ErrInvalidResponse):
+		return "github_invalid_response"
+	case errors.Is(err, client.ErrCanceled):
+		return "github_canceled"
+	case errors.Is(err, client.ErrCacheCoordinationUnavailable):
+		return "cache_unavailable"
+	}
+	return "unknown"
 }

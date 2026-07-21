@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ilkerkorkut/connect-tickets/internal/client"
@@ -34,60 +36,95 @@ func WriteError(c *gin.Context, status int, code, message string, details ...Det
 }
 
 func WriteServiceError(c *gin.Context, err error) {
-	if errors.Is(err, repository.ErrInvalidCursor) || errors.Is(err, changefeed.ErrInvalidCursor) {
-		WriteError(c, http.StatusBadRequest, "invalid_cursor", "The cursor is invalid.")
-		return
+	classification, message := classify(err)
+	args := []any{
+		"error_code", classification.code,
+		"http_status", classification.status,
+		"error_kind", classification.kind,
+		"github_status", classification.githubStatus,
+		"github_retry_after_ms", classification.retryAfterMs,
+		"github_reset_at", classification.resetAt,
 	}
-	if errors.Is(err, repository.ErrInvalidInput) {
-		WriteError(c, http.StatusBadRequest, "validation_failed", "The request is invalid.")
-		return
+	if classification.kind == "internal" {
+		args = append(args, "error_type", fmt.Sprintf("%T", err))
 	}
-	if errors.Is(err, repository.ErrNotFound) {
-		WriteError(c, http.StatusNotFound, "tracked_repo_not_found", "The tracked repository was not found.")
-		return
-	}
-	if errors.Is(err, batch.ErrNotFound) {
-		WriteError(c, http.StatusNotFound, "batch_not_found", "The batch was not found.")
-		return
-	}
-	if errors.Is(err, repository.ErrDuplicate) {
-		WriteError(c, http.StatusConflict, "repo_already_tracked", "The repository is already being tracked.")
-		return
-	}
-	if errors.Is(err, client.ErrNotFound) {
-		WriteError(c, http.StatusNotFound, "github_repo_not_found", "The repository was not found on GitHub.")
-		return
-	}
-	if errors.Is(err, client.ErrRateLimited) {
-		writeGitHubError(c, http.StatusServiceUnavailable, "github_rate_limited", "GitHub is temporarily rate limited.", err)
-		return
-	}
-	if errors.Is(err, client.ErrTimeout) || errors.Is(err, client.ErrCanceled) {
-		WriteError(c, http.StatusGatewayTimeout, "github_timeout", "GitHub did not respond in time.")
-		return
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		WriteError(c, http.StatusGatewayTimeout, "request_timeout", "The request did not complete in time.")
-		return
-	}
-	if errors.Is(err, client.ErrCacheCoordinationUnavailable) {
-		WriteError(c, http.StatusServiceUnavailable, "cache_unavailable", "The cache service is temporarily unavailable.")
-		return
-	}
-	if errors.Is(err, client.ErrUnauthorized) || errors.Is(err, client.ErrServer) || errors.Is(err, client.ErrNetwork) || errors.Is(err, client.ErrInvalidResponse) {
-		writeGitHubError(c, http.StatusBadGateway, "github_unavailable", "GitHub is temporarily unavailable.", err)
-		return
-	}
-	WriteError(c, http.StatusInternalServerError, "internal_error", "An unexpected error occurred.")
-}
-
-func writeGitHubError(c *gin.Context, status int, code, message string, err error) {
-	var requestError *client.RequestError
-	if errors.As(err, &requestError) && requestError.RateLimit.RetryAfter > 0 {
-		seconds := math.Ceil(requestError.RateLimit.RetryAfter.Seconds())
+	logging.Warn(c.Request.Context(), "request failed", args...)
+	if classification.retryAfterMs > 0 {
+		seconds := math.Ceil(float64(classification.retryAfterMs) / float64(time.Second.Milliseconds()))
 		if seconds > 0 && seconds <= float64(math.MaxInt) {
 			c.Header("Retry-After", strconv.Itoa(int(seconds)))
 		}
 	}
-	WriteError(c, status, code, message)
+	WriteError(c, classification.status, classification.code, message)
+}
+
+type errorClass struct {
+	status       int
+	code         string
+	kind         string
+	githubStatus int
+	retryAfterMs int64
+	resetAt      string
+}
+
+func classify(err error) (errorClass, string) {
+	if errors.Is(err, repository.ErrInvalidCursor) || errors.Is(err, changefeed.ErrInvalidCursor) {
+		return errorClass{status: http.StatusBadRequest, code: "invalid_cursor", kind: "invalid_cursor"}, "The cursor is invalid."
+	}
+	if errors.Is(err, repository.ErrInvalidInput) {
+		return errorClass{status: http.StatusBadRequest, code: "validation_failed", kind: "invalid_input"}, "The request is invalid."
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		return errorClass{status: http.StatusNotFound, code: "tracked_repo_not_found", kind: "not_found"}, "The tracked repository was not found."
+	}
+	if errors.Is(err, batch.ErrNotFound) {
+		return errorClass{status: http.StatusNotFound, code: "batch_not_found", kind: "not_found"}, "The batch was not found."
+	}
+	if errors.Is(err, repository.ErrDuplicate) {
+		return errorClass{status: http.StatusConflict, code: "repo_already_tracked", kind: "duplicate"}, "The repository is already being tracked."
+	}
+	if errors.Is(err, client.ErrNotFound) {
+		return errorClass{status: http.StatusNotFound, code: "github_repo_not_found", kind: "github_not_found"}, "The repository was not found on GitHub."
+	}
+	if errors.Is(err, client.ErrRateLimited) {
+		class := githubClass(err, http.StatusServiceUnavailable, "github_rate_limited", "github_rate_limited")
+		return class, "GitHub is temporarily rate limited."
+	}
+	if errors.Is(err, client.ErrTimeout) || errors.Is(err, client.ErrCanceled) {
+		return errorClass{status: http.StatusGatewayTimeout, code: "github_timeout", kind: "github_timeout"}, "GitHub did not respond in time."
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return errorClass{status: http.StatusGatewayTimeout, code: "request_timeout", kind: "context_deadline"}, "The request did not complete in time."
+	}
+	if errors.Is(err, client.ErrCacheCoordinationUnavailable) {
+		return errorClass{status: http.StatusServiceUnavailable, code: "cache_unavailable", kind: "cache_unavailable"}, "The cache service is temporarily unavailable."
+	}
+	if errors.Is(err, client.ErrUnauthorized) || errors.Is(err, client.ErrServer) || errors.Is(err, client.ErrNetwork) || errors.Is(err, client.ErrInvalidResponse) {
+		class := githubClass(err, http.StatusBadGateway, "github_unavailable", "github_unavailable")
+		return class, "GitHub is temporarily unavailable."
+	}
+	return errorClass{status: http.StatusInternalServerError, code: "internal_error", kind: "internal", githubStatus: githubStatusFrom(err)}, "An unexpected error occurred."
+}
+
+func githubClass(err error, status int, code, kind string) errorClass {
+	class := errorClass{status: status, code: code, kind: kind}
+	var requestError *client.RequestError
+	if errors.As(err, &requestError) {
+		class.githubStatus = requestError.Status
+		if requestError.RateLimit.RetryAfter > 0 {
+			class.retryAfterMs = requestError.RateLimit.RetryAfter.Milliseconds()
+		}
+		if requestError.RateLimit.ResetAt != nil {
+			class.resetAt = requestError.RateLimit.ResetAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+		}
+	}
+	return class
+}
+
+func githubStatusFrom(err error) int {
+	var requestError *client.RequestError
+	if errors.As(err, &requestError) {
+		return requestError.Status
+	}
+	return 0
 }
