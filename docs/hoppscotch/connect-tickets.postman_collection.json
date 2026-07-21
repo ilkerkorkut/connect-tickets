@@ -1,0 +1,598 @@
+{
+  "info": {
+    "_postman_id": "c4f7a1e2-9b3d-4c8e-9f01-connect-tickets",
+    "name": "connect-tickets",
+    "description": "connect-tickets — GitHub repository tracker API.\n\nImport: Hoppscotch → Collections → Import/Export → Import from Postman, then select this file.\n\nAll business routes are under /api. Health routes are at the root.\n\nVariables (set in your Hoppscotch environment or collection variables):\n- baseUrl: API base URL (host-published Docker port 18080 → container 8080).\n- owner / name: used by POST /api/repos.\n- repoId: a tracked repository UUID (returned by create/list, used by /api/repos/:id routes).\n- batchId: a refresh-all batch UUID (returned by POST /api/repos/refresh-all).\n\nStandard response envelope on errors:\n{\n  \"error\": {\n    \"code\": \"error_code\",\n    \"message\": \"Safe message\",\n    \"request_id\": \"...\",\n    \"details\": [{\"field\": \"...\", \"reason\": \"...\"}]\n  }\n}\n\nX-Request-ID (optional, matching ^[A-Za-z0-9._-]{1,128}$) is echoed back on every response. Bigger than 1 MiB bodies are rejected (413 body_too_large).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:18080", "type": "string" },
+    { "key": "owner", "value": "golang", "type": "string" },
+    { "key": "name", "value": "go", "type": "string" },
+    { "key": "repoId", "value": "00000000-0000-0000-0000-000000000000", "type": "string" },
+    { "key": "batchId", "value": "00000000-0000-0000-0000-000000000000", "type": "string" },
+    { "key": "language", "value": "Go", "type": "string" },
+    { "key": "cursor", "value": "", "type": "string" }
+  ],
+  "auth": null,
+  "item": [
+    {
+      "name": "Health",
+      "description": "Liveness and readiness probes. These return {\"status\":\"ok\"} (200) or {\"status\":\"not_ready\"} (503) directly, not the canonical error envelope.",
+      "item": [
+        {
+          "name": "Live (GET /livez)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/livez",
+              "host": ["{{baseUrl}}"],
+              "path": ["livez"]
+            },
+            "description": "Liveness probe. Always returns 200 {\"status\":\"ok\"} regardless of dependency health. Use for restart decisions."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "X-Request-ID", "value": "01HXYZ...generated-uuid" }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Live alias (GET /healthz)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthz",
+              "host": ["{{baseUrl}}"],
+              "path": ["healthz"]
+            },
+            "description": "Liveness probe alias for /livez."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Ready (GET /readyz)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/readyz",
+              "host": ["{{baseUrl}}"],
+              "path": ["readyz"]
+            },
+            "description": "Readiness probe. Returns 200 {\"status\":\"ok\"} when dependencies (DB/Redis/Kafka) are reachable, otherwise 503 {\"status\":\"not_ready\"}. Use for traffic routing."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "503 Not Ready",
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"not_ready\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Health live (GET /health/live)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "live"]
+            },
+            "description": "Liveness probe at /health/live."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Health ready (GET /health/ready)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "ready"]
+            },
+            "description": "Readiness probe at /health/ready."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "503 Not Ready",
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"not_ready\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Repositories",
+      "description": "Collection-level repository operations: create, list, stats, change-feed, and refresh-all.",
+      "item": [
+        {
+          "name": "Create repository (POST /api/repos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body && body.id) {",
+                  "    pm.collectionVariables.set('repoId', body.id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true, "description": "Optional. If present must match ^[A-Za-z0-9._-]{1,128}$. Always echoed on the response." }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"owner\": \"{{owner}}\",\n  \"name\": \"{{name}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/repos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos"]
+            },
+            "description": "Begin tracking a GitHub repository. Server fetches the repo from GitHub (using GITHUB_TOKEN) and inserts it. Triggers a real GitHub call and writes a 'created' change-feed row.\n\nRequest body (strict: unknown fields and trailing data are rejected):\n{ \"owner\": string, \"name\": string }\n\nConcurrent duplicate creation: one request wins (201), the rest get 409 repo_already_tracked.\n\nSuccess → 201. Test script captures the returned id into the repoId variable."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "X-Request-ID", "value": "01HXYZ..." }
+              ],
+              "body": "{\n  \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n  \"owner\": \"golang\",\n  \"name\": \"go\",\n  \"full_name\": \"golang/go\",\n  \"description\": \"The Go programming language\",\n  \"stars\": 120000,\n  \"language\": \"Go\",\n  \"html_url\": \"https://github.com/golang/go\",\n  \"notes\": \"\",\n  \"fetched_at\": \"2026-07-21T10:00:00Z\",\n  \"created_at\": \"2026-07-21T10:00:00Z\",\n  \"updated_at\": \"2026-07-21T10:00:00Z\"\n}"
+            },
+            {
+              "name": "409 Already tracked",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"repo_already_tracked\",\n    \"message\": \"Repository is already tracked.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            },
+            {
+              "name": "400 Validation failed",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"validation_failed\",\n    \"message\": \"Request validation failed.\",\n    \"request_id\": \"01HXYZ...\",\n    \"details\": [\n      { \"field\": \"owner\", \"reason\": \"required\" }\n    ]\n  }\n}"
+            },
+            {
+              "name": "404 GitHub repo not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"github_repo_not_found\",\n    \"message\": \"GitHub repository was not found.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            },
+            {
+              "name": "503 GitHub rate limited",
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Retry-After", "value": "60" }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"github_rate_limited\",\n    \"message\": \"GitHub is temporarily rate limited.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List repositories (GET /api/repos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body && body.has_more && body.next_cursor) {",
+                  "    pm.collectionVariables.set('cursor', body.next_cursor);",
+                  "  } else {",
+                  "    pm.collectionVariables.set('cursor', '');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repos?limit=25&sort=updated_desc&language=&cursor=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos"],
+              "query": [
+                { "key": "limit", "value": "25", "description": "Page size. 1–100, default 25." },
+                { "key": "sort", "value": "updated_desc", "description": "stars_desc | updated_desc (default updated_desc)." },
+                { "key": "language", "value": "", "disabled": true, "description": "Exact-match language filter." },
+                { "key": "cursor", "value": "", "disabled": true, "description": "Opaque cursor from a previous next_cursor." }
+              ]
+            },
+            "description": "Paginated list of tracked repositories (excludes soft-deleted). Cursor is opaque (base64url JSON). Filter by language, sort by stars or updated. Test script auto-fills the cursor variable when has_more is true."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"repos\": [\n    {\n      \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n      \"owner\": \"golang\",\n      \"name\": \"go\",\n      \"full_name\": \"golang/go\",\n      \"description\": \"The Go programming language\",\n      \"stars\": 120000,\n      \"language\": \"Go\",\n      \"html_url\": \"https://github.com/golang/go\",\n      \"notes\": \"\",\n      \"fetched_at\": \"2026-07-21T10:00:00Z\",\n      \"created_at\": \"2026-07-21T10:00:00Z\",\n      \"updated_at\": \"2026-07-21T10:00:00Z\"\n    }\n  ],\n  \"next_cursor\": \"eyJ2IjoxLCJzIjoidXBkYXRlZF9kZXNjIiwibCI6IiIsIngiOjAsInUiOiIyMDI2LTA3LTIxVDEwOjAwOjAwWiIsImkiOiI3ZjJjMWE5ZSJ9\",\n  \"has_more\": false\n}"
+            },
+            {
+              "name": "400 Invalid cursor",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"invalid_cursor\",\n    \"message\": \"Cursor is invalid.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Statistics (GET /api/repos/stats)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "stats"]
+            },
+            "description": "Aggregate statistics over tracked repositories, computed in SQL: total count, sum of stars, and most common language (null if none)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"total\": 42,\n  \"total_stars\": 123456,\n  \"top_language\": \"Go\"\n}"
+            },
+            {
+              "name": "200 OK (empty)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"total\": 0,\n  \"total_stars\": 0,\n  \"top_language\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Change feed (GET /api/repos/changes)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body && body.has_more && body.next_cursor) {",
+                  "    pm.collectionVariables.set('cursor', body.next_cursor);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/changes?limit=25&since=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "changes"],
+              "query": [
+                { "key": "limit", "value": "25", "description": "Page size. 1–100, default 25." },
+                { "key": "since", "value": "", "disabled": true, "description": "Opaque change cursor from a previous next_cursor." }
+              ]
+            },
+            "description": "Commit-ordered change feed of repository mutations: created | refreshed | notes_updated | deleted. Deletion tombstones remain in the feed. The repo object is the full repository snapshot at the time of the change. Use 'since' for tailing; 'cursor' field on each change equals its position."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"changes\": [\n    {\n      \"cursor\": \"eyJ2IjoxLCJzIjoxfQ\",\n      \"event_id\": \"9a1b2c3d-4e5f-6071-8290-a1b2c3d4e5f6\",\n      \"operation\": \"created\",\n      \"repo\": {\n        \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n        \"owner\": \"golang\",\n        \"name\": \"go\",\n        \"full_name\": \"golang/go\",\n        \"description\": \"The Go programming language\",\n        \"stars\": 120000,\n        \"language\": \"Go\",\n        \"html_url\": \"https://github.com/golang/go\",\n        \"notes\": \"\",\n        \"fetched_at\": \"2026-07-21T10:00:00Z\",\n        \"created_at\": \"2026-07-21T10:00:00Z\",\n        \"updated_at\": \"2026-07-21T10:00:00Z\"\n      }\n    }\n  ],\n  \"next_cursor\": \"eyJ2IjoxLCJzIjoxfQ\",\n  \"has_more\": false\n}"
+            },
+            {
+              "name": "400 Invalid cursor",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"invalid_cursor\",\n    \"message\": \"Cursor is invalid.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh all (POST /api/repos/refresh-all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  const body = pm.response.json();",
+                  "  if (body && body.batch_id) {",
+                  "    pm.collectionVariables.set('batchId', body.batch_id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "body": { "mode": "raw", "raw": "", "options": { "raw": { "language": "text" } } },
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/refresh-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "refresh-all"]
+            },
+            "description": "Snapshot all tracked repositories and enqueue one refresh job per repo. Returns immediately with a batch id (202). Poll GET /api/batches/:id for progress. Test script captures batch_id into the batchId variable."
+          },
+          "response": [
+            {
+              "name": "202 Accepted",
+              "status": "Accepted",
+              "code": 202,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"batch_id\": \"b1c2d3e4-5f60-4708-9101-a1b2c3d4e5f6\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Repository by ID",
+      "description": "Operations on a single tracked repository via /api/repos/:id. Set the repoId variable (create returns it). Bad UUID → 404 tracked_repo_not_found.",
+      "item": [
+        {
+          "name": "Get repository (GET /api/repos/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/{{repoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "{{repoId}}"]
+            },
+            "description": "Fetch a single tracked repository by id (UUID)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n  \"owner\": \"golang\",\n  \"name\": \"go\",\n  \"full_name\": \"golang/go\",\n  \"description\": \"The Go programming language\",\n  \"stars\": 120000,\n  \"language\": \"Go\",\n  \"html_url\": \"https://github.com/golang/go\",\n  \"notes\": \"\",\n  \"fetched_at\": \"2026-07-21T10:00:00Z\",\n  \"created_at\": \"2026-07-21T10:00:00Z\",\n  \"updated_at\": \"2026-07-21T10:00:00Z\"\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"tracked_repo_not_found\",\n    \"message\": \"Tracked repository was not found.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update notes (PATCH /api/repos/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Track release cadence for the 1.25 cycle.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/{{repoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "{{repoId}}"]
+            },
+            "description": "Update user notes for a tracked repository (max 4000 chars; longer → 400 validation_failed {field:notes,reason:too_long}). Writes a 'notes_updated' change-feed row."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n  \"owner\": \"golang\",\n  \"name\": \"go\",\n  \"full_name\": \"golang/go\",\n  \"description\": \"The Go programming language\",\n  \"stars\": 120000,\n  \"language\": \"Go\",\n  \"html_url\": \"https://github.com/golang/go\",\n  \"notes\": \"Track release cadence for the 1.25 cycle.\",\n  \"fetched_at\": \"2026-07-21T10:00:00Z\",\n  \"created_at\": \"2026-07-21T10:00:00Z\",\n  \"updated_at\": \"2026-07-21T10:00:01Z\"\n}"
+            },
+            {
+              "name": "400 Notes too long",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"validation_failed\",\n    \"message\": \"Request validation failed.\",\n    \"request_id\": \"01HXYZ...\",\n    \"details\": [\n      { \"field\": \"notes\", \"reason\": \"too_long\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete repository (DELETE /api/repos/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/{{repoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "{{repoId}}"]
+            },
+            "description": "Soft-delete via deleted_at tombstone. Returns 204 with empty body. A 'deleted' change-feed tombstone remains in the feed."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [{ "key": "X-Request-ID", "value": "01HXYZ..." }],
+              "body": ""
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"tracked_repo_not_found\",\n    \"message\": \"Tracked repository was not found.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh repository (POST /api/repos/:id/refresh)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "body": { "mode": "raw", "raw": "", "options": { "raw": { "language": "text" } } },
+            "url": {
+              "raw": "{{baseUrl}}/api/repos/{{repoId}}/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "repos", "{{repoId}}", "refresh"]
+            },
+            "description": "Re-fetch a single repository from GitHub and update tracked fields. User notes are preserved (only non-notes fields are overwritten). Writes a 'refreshed' change-feed row."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n  \"owner\": \"golang\",\n  \"name\": \"go\",\n  \"full_name\": \"golang/go\",\n  \"description\": \"The Go programming language\",\n  \"stars\": 120001,\n  \"language\": \"Go\",\n  \"html_url\": \"https://github.com/golang/go\",\n  \"notes\": \"Track release cadence for the 1.25 cycle.\",\n  \"fetched_at\": \"2026-07-21T10:05:00Z\",\n  \"created_at\": \"2026-07-21T10:00:00Z\",\n  \"updated_at\": \"2026-07-21T10:05:00Z\"\n}"
+            },
+            {
+              "name": "502 GitHub unavailable",
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"github_unavailable\",\n    \"message\": \"GitHub is temporarily unavailable.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Batches",
+      "description": "Track refresh-all progress. PostgreSQL batch rows are authoritative for status.",
+      "item": [
+        {
+          "name": "Batch status (GET /api/batches/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Request-ID", "value": "{{$guid}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/batches/{{batchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "batches", "{{batchId}}"]
+            },
+            "description": "Get refresh-all batch progress. 'complete' is true once CompletedAt is set. 'failed[].reason.code' is sanitized to: github_repo_not_found | github_rate_limited | github_unavailable | github_timeout | cache_unavailable | refresh_failed. Bad UUID → 400 validation_failed {field:id,reason:invalid}."
+          },
+          "response": [
+            {
+              "name": "200 OK (in progress)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b1c2d3e4-5f60-4708-9101-a1b2c3d4e5f6\",\n  \"total\": 5,\n  \"pending\": 2,\n  \"succeeded\": 2,\n  \"failed\": [\n    {\n      \"repo_id\": \"7f2c1a9e-3b4d-4c8e-9f01-2a3b4c5d6e7f\",\n      \"reason\": {\n        \"code\": \"github_rate_limited\",\n        \"message\": \"GitHub is temporarily rate limited.\"\n      }\n    }\n  ],\n  \"complete\": false\n}"
+            },
+            {
+              "name": "200 OK (complete)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b1c2d3e4-5f60-4708-9101-a1b2c3d4e5f6\",\n  \"total\": 5,\n  \"pending\": 0,\n  \"succeeded\": 5,\n  \"failed\": [],\n  \"complete\": true\n}"
+            },
+            {
+              "name": "404 Batch not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"code\": \"batch_not_found\",\n    \"message\": \"Batch was not found.\",\n    \"request_id\": \"01HXYZ...\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

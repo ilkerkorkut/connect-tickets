@@ -141,14 +141,14 @@ func (s *Service) List(ctx context.Context, input ListInput) (Page, error) {
 }
 
 func (s *Service) Statistics(ctx context.Context) (Statistics, error) {
-	total, err := s.client.Repository.Query().Where(repository.DeletedAtIsNil()).Count(ctx)
+	total, err := s.client.Debug().Repository.Query().Where(repository.DeletedAtIsNil()).Count(ctx)
 	if err != nil {
 		return Statistics{}, fmt.Errorf("count repositories: %w", err)
 	}
 	var totals []struct {
 		Total int64 `json:"total"`
 	}
-	if err := s.client.Repository.Query().Where(repository.DeletedAtIsNil()).Aggregate(ent.As(ent.Sum(repository.FieldStars), "total")).Scan(ctx, &totals); err != nil {
+	if err := s.client.Debug().Repository.Query().Where(repository.DeletedAtIsNil()).Aggregate(ent.As(ent.Sum(repository.FieldStars), "total")).Scan(ctx, &totals); err != nil {
 		return Statistics{}, fmt.Errorf("sum repository stars: %w", err)
 	}
 	result := Statistics{Total: total}
@@ -159,7 +159,7 @@ func (s *Service) Statistics(ctx context.Context) (Statistics, error) {
 		Language string `json:"language"`
 		Count    int    `json:"count"`
 	}
-	if err := s.client.Repository.Query().Where(repository.DeletedAtIsNil(), repository.LanguageNotNil(), repository.LanguageNEQ("")).GroupBy(repository.FieldLanguage).Aggregate(ent.Count()).Scan(ctx, &languages); err != nil {
+	if err := s.client.Debug().Repository.Query().Where(repository.DeletedAtIsNil(), repository.LanguageNotNil(), repository.LanguageNEQ("")).GroupBy(repository.FieldLanguage).Aggregate(ent.Count()).Scan(ctx, &languages); err != nil {
 		return Statistics{}, fmt.Errorf("group repository languages: %w", err)
 	}
 	for _, language := range languages {

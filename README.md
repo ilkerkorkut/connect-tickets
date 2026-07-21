@@ -45,6 +45,8 @@ The GitHub gateway uses Resty with explicit response-body and request-time limit
 
 Repository list pagination is cursor-based. Change-feed cursors are commit-ordered sequence values: consumers can see a repeated last record but cannot miss a committed change; deletion tombstones remain in the feed.
 
+5 partitions are used for the Kafka topic. Each partition is consumed by one worker replica, which guarantees that only one worker processes a given repository at a time. The worker uses a durable job claim to ensure that only one replica can process a given repository at a time, even if the consumer is restarted or fails over.
+
 ## Validation
 
 ```bash
