@@ -21,6 +21,8 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent"
 	entrepository "github.com/ilkerkorkut/connect-tickets/ent/repository"
 	"github.com/ilkerkorkut/connect-tickets/ent/repositorychange"
+	"github.com/ilkerkorkut/connect-tickets/internal/cache"
+	"github.com/ilkerkorkut/connect-tickets/internal/client"
 	githubclient "github.com/ilkerkorkut/connect-tickets/internal/client/github"
 	"github.com/ilkerkorkut/connect-tickets/internal/service/repository"
 	"github.com/ilkerkorkut/connect-tickets/internal/testkit"
@@ -28,6 +30,12 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 )
+
+type concurrencyAPIStub struct {
+	github client.GitHub
+}
+
+func (stub concurrencyAPIStub) GitHub() client.GitHub { return stub.github }
 
 const concurrentRequests = 5
 
@@ -75,23 +83,23 @@ func newRedisClient(t *testing.T, address string) *redis.Client {
 	return client
 }
 
-func newAPI(t *testing.T, log *scenarioLogger, client *ent.Client, cache *redis.Client, githubURL string) *httptest.Server {
+func newAPI(t *testing.T, log *scenarioLogger, entClient *ent.Client, redisClient *redis.Client, githubURL string) *httptest.Server {
 	t.Helper()
 	upstream, err := githubclient.NewClient(config.GitHubConfig{BaseURL: githubURL, Timeout: 2 * time.Second, UserAgent: "concurrency-smoke", MaxIdleConns: concurrentRequests, MaxIdleConnsPerHost: concurrentRequests, IdleConnTimeout: time.Minute}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := cache.NewGateway(upstream, cache, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
+	gateway, err := cache.NewCacheGateway(concurrencyAPIStub{github: upstream}, redisClient, config.CacheConfig{TTL: time.Minute, LockTTL: 3 * time.Second, LockWait: 4 * time.Second}, 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(NewRouter(Dependencies{Repositories: repository.NewService(client, gateway)}, config.HTTPConfig{RequestTimeout: 5 * time.Second}, nil))
+	server := httptest.NewServer(NewRouter(Dependencies{Repositories: repository.NewService(entClient, gateway)}, config.HTTPConfig{RequestTimeout: 5 * time.Second}, nil))
 	t.Cleanup(server.Close)
 	log.Log("phase=setup action=api_ready request_timeout=5s github_timeout=2s cache_ttl=1m cache_lock_ttl=3s cache_lock_wait=4s")
 	return server
 }
 
-func cleanupRepository(client *ent.Client, cache *redis.Client, owner, name string) {
+func cleanupRepository(client *ent.Client, redisClient *redis.Client, owner, name string) {
 	ctx := context.Background()
 	normalizedFullName := strings.ToLower(owner + "/" + name)
 	rows, err := client.Repository.Query().Where(entrepository.NormalizedFullNameEQ(normalizedFullName)).All(ctx)
@@ -101,7 +109,7 @@ func cleanupRepository(client *ent.Client, cache *redis.Client, owner, name stri
 			_ = client.Repository.DeleteOneID(row.ID).Exec(ctx)
 		}
 	}
-	_ = cache.Del(ctx, "github:repo:v1:"+normalizedFullName, "github:repo-lock:v1:"+normalizedFullName).Err()
+	_ = redisClient.Del(ctx, "github:repo:v1:"+normalizedFullName, "github:repo-lock:v1:"+normalizedFullName).Err()
 }
 
 type githubMock struct {

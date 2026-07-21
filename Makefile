@@ -28,7 +28,7 @@ name ?=
 COMPOSE_CMD = $(COMPOSE) --project-name $(COMPOSE_PROJECT) --env-file .env -f $(COMPOSE_FILE)
 TEST_COMPOSE_CMD = $(COMPOSE) --project-name $(TEST_COMPOSE_PROJECT) -f $(TEST_COMPOSE_FILE)
 
-.PHONY: help bootstrap tools deps generate ent-generate generate-check fmt fmt-check vet lint test test-unit test-race test-integration test-all ci build run-api run-worker infra-up infra-down infra-restart infra-logs infra-ps docker-build docker-up docker-down docker-restart docker-logs docker-ps docker-reset migrate-up migrate-down migrate-status migration-new kafka-topics kafka-describe kafka-groups kafka-lag kafka-dlq kafka-recreate-topics smoke smoke-concurrency smoke-refresh-batch smoke-shutdown clean
+.PHONY: help bootstrap tools deps generate ent-generate generate-check fmt fmt-check vet lint test test-unit test-race test-integration test-all ci build run-api run-worker infra-up infra-down infra-restart infra-logs infra-ps docker-build docker-up docker-down docker-restart docker-logs docker-ps docker-reset migrate-up migrate-down migrate-status migration-new kafka-topics kafka-describe kafka-groups kafka-lag kafka-dlq kafka-recreate-topics smoke smoke-concurrency smoke-concurrency-batch smoke-refresh-batch smoke-shutdown clean
 
 help: ## Show this help
 	@awk 'BEGIN { FS = ":.*##"; printf "Usage:\n  make \\033[36m<target>\\033[0m\n\nTargets:\n" } /^[a-zA-Z0-9_-]+:.*##/ { printf "  \\033[36m%-24s\\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -168,6 +168,9 @@ smoke: ## Run the realistic Docker API and worker smoke suite
 
 smoke-concurrency: ## Run isolated Testcontainers API and worker concurrency smoke suites
 	@scripts/smoke-concurrency.sh
+
+smoke-concurrency-batch: ## Run isolated Testcontainers batch concurrency smoke suite
+	@scripts/smoke-concurrency-batch.sh
 
 smoke-refresh-batch: ## Run the refresh-batch smoke suite
 	@scripts/smoke-batch.sh
