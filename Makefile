@@ -166,7 +166,7 @@ kafka-recreate-topics: ## Destructively delete and recreate required Kafka topic
 smoke: ## Run the realistic Docker API and worker smoke suite
 	@scripts/smoke-test.sh
 
-smoke-concurrency: ## Assert one GitHub request and one successful concurrent create
+smoke-concurrency: ## Run isolated Testcontainers API and worker concurrency smoke suites
 	@scripts/smoke-concurrency.sh
 
 smoke-refresh-batch: ## Run the refresh-batch smoke suite

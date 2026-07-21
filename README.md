@@ -50,7 +50,10 @@ Repository list pagination is cursor-based. Change-feed cursors are commit-order
 ```bash
 make test-unit
 make test-race
+make smoke-concurrency
 make ci
 ```
 
 The integration suite starts isolated PostgreSQL, Redis, Kafka, and an Atlas migration service through `compose.test.yaml`.
+
+`make smoke-concurrency` starts isolated PostgreSQL, Redis, and Kafka containers through Testcontainers. It verifies both concurrency scenarios: five concurrent HTTP creates yield exactly one GitHub request, one `201 Created`, and four `409 Conflict` responses; and a GitHub `429` with `Retry-After` creates a shared Redis cooldown so five workers, consuming one message from each Kafka partition, schedule durable retries without another GitHub request. Verbose structured output identifies the scenario, synchronization gate, dependency readiness, each outcome, and the final invariant counts.
