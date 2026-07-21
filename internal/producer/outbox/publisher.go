@@ -14,6 +14,11 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/pkg/logging"
 )
 
+const (
+	minAttempts = 1
+	maxAttempts = 30
+)
+
 type Producer interface {
 	Publish(context.Context, *sarama.ProducerMessage) (kafka.Delivery, error)
 }
@@ -127,14 +132,9 @@ func (p *Publisher) release(ctx context.Context, event Event, safeError string) 
 }
 
 func (p *Publisher) retryDelay(attempts int) time.Duration {
-	step := min(attempts, p.maxAttempts)
-	if step < 1 {
-		step = 1
-	}
-	if step > 30 {
-		step = 30
-	}
-	delay := time.Duration(math.Pow(2, float64(step-1))) * p.poll
+	step := min(max(min(attempts, p.maxAttempts), minAttempts), maxAttempts)
+
+	delay := time.Duration(math.Pow(2, float64(step-1))) * p.poll // exponential backoff with jitter
 	if delay > p.lease {
 		return p.lease
 	}

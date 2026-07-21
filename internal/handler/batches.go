@@ -15,7 +15,9 @@ func (h *Handler) RefreshAll(c *gin.Context) {
 		WriteServiceError(c, err)
 		return
 	}
+
 	logging.Event(c.Request.Context(), "refresh all scheduled", "batch_id", id)
+
 	c.JSON(http.StatusAccepted, gin.H{"batch_id": id.String()})
 }
 
@@ -25,17 +27,21 @@ func (h *Handler) BatchStatus(c *gin.Context) {
 		WriteError(c, http.StatusBadRequest, "validation_failed", "The request is invalid.", Detail{Field: "id", Reason: "invalid"})
 		return
 	}
+
 	status, err := h.batches.Status(c.Request.Context(), id)
 	if err != nil {
 		WriteServiceError(c, err)
 		return
 	}
+
 	failed := make([]gin.H, 0, len(status.Failed))
 	for _, failure := range status.Failed {
 		code, message := safeFailure(failure.Code)
 		failed = append(failed, gin.H{"repo_id": failure.RepositoryID.String(), "reason": gin.H{"code": code, "message": message}})
 	}
+
 	logging.Debug(c.Request.Context(), "batch status fetched", "batch_id", status.ID, "total", status.Total, "pending", status.Pending, "succeeded", status.Succeeded, "failed", len(failed))
+
 	c.JSON(http.StatusOK, gin.H{"id": status.ID.String(), "total": status.Total, "pending": status.Pending, "succeeded": status.Succeeded, "failed": failed, "complete": status.CompletedAt != nil})
 }
 

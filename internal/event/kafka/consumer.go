@@ -59,11 +59,14 @@ func (c *Consumer) Consume(ctx context.Context, processor RecordProcessor, obser
 	if c == nil || c.group == nil || processor == nil {
 		return ErrInvalidConfig
 	}
+
 	consumeCtx := ctx
+
 	if c.logger != nil {
 		consumeCtx = logging.WithConsumerGroup(ctx, c.groupName)
 		logging.ScopedLogger(consumeCtx, c.logger).Info("kafka consume started", "topic", RefreshTopic, "consumer_group", c.groupName)
 	}
+
 	handler := groupHandler{processor: processor, observer: observer, logger: c.logger, groupName: c.groupName}
 	var terminal error
 	for {
@@ -76,6 +79,7 @@ func (c *Consumer) Consume(ctx context.Context, processor RecordProcessor, obser
 			break
 		}
 	}
+
 	if c.logger != nil {
 		scoped := logging.ScopedLogger(consumeCtx, c.logger)
 		if terminal != nil {
@@ -84,6 +88,7 @@ func (c *Consumer) Consume(ctx context.Context, processor RecordProcessor, obser
 			scoped.Info("kafka consume stopped", "consumer_group", c.groupName)
 		}
 	}
+
 	return terminal
 }
 
@@ -98,12 +103,14 @@ func (c *Consumer) Close(ctx context.Context) error {
 	if c == nil || c.group == nil {
 		return nil
 	}
+
 	c.closeOnce.Do(func() {
 		go func() {
 			c.closeErr = c.group.Close()
 			close(c.closeDone)
 		}()
 	})
+
 	select {
 	case <-c.closeDone:
 		return c.closeErr
@@ -115,11 +122,13 @@ func (c *Consumer) Close(ctx context.Context) error {
 func (c *Consumer) Shutdown(timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	return c.Close(ctx)
 }
 
 func (c *Consumer) forwardErrors() {
 	defer close(c.errors)
+
 	for err := range c.group.Errors() {
 		select {
 		case c.errors <- err:

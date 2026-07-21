@@ -11,7 +11,10 @@ import (
 	"github.com/ilkerkorkut/connect-tickets/ent/repositorychange"
 )
 
-const maxLimit = 100
+const (
+	defaultLimit = 25
+	maxLimit     = 100
+)
 
 var ErrInvalidCursor = errors.New("invalid change cursor")
 
@@ -21,22 +24,25 @@ type Change struct {
 	Operation  string
 	Repository map[string]any
 }
+
 type Page struct {
 	Changes    []Change
 	NextCursor string
 	HasMore    bool
 }
+
 type cursor struct {
 	Version  int   `json:"v"`
 	Sequence int64 `json:"s"`
 }
+
 type Store struct{ client *ent.Client }
 
 func NewStore(client *ent.Client) *Store { return &Store{client: client} }
 
 func (s *Store) List(ctx context.Context, since string, limit int) (Page, error) {
 	if limit <= 0 {
-		limit = 25
+		limit = defaultLimit
 	}
 	if limit > maxLimit {
 		limit = maxLimit

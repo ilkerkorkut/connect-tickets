@@ -107,18 +107,22 @@ func (s *Service) List(ctx context.Context, input ListInput) (Page, error) {
 	case SortUpdatedDesc:
 		query = query.Order(repository.ByUpdatedAt(sql.OrderDesc()), repository.ByID(sql.OrderDesc()))
 	}
+
 	rows, err := query.Limit(input.Limit + 1).All(ctx)
 	if err != nil {
 		return Page{}, fmt.Errorf("list repositories: %w", err)
 	}
+
 	page := Page{HasMore: len(rows) > input.Limit}
 	if page.HasMore {
 		rows = rows[:input.Limit]
 	}
+
 	page.Repositories = make([]Repository, len(rows))
 	for i, row := range rows {
 		page.Repositories[i] = fromEnt(row)
 	}
+
 	if len(rows) > 0 {
 		last := rows[len(rows)-1]
 		cursor := listCursor{Version: 1, Sort: input.Sort, Language: input.Language, ID: last.ID}
@@ -132,6 +136,7 @@ func (s *Service) List(ctx context.Context, input ListInput) (Page, error) {
 			return Page{}, fmt.Errorf("encode repository cursor: %w", err)
 		}
 	}
+
 	return page, nil
 }
 
@@ -262,23 +267,29 @@ func (s *Service) Refresh(ctx context.Context, id string) (Repository, error) {
 	if s.github == nil {
 		return Repository{}, ErrInvalidInput
 	}
+
 	logging.Debug(ctx, "github fetch starting", "operation", "refresh", "repo_id", local.ID, "owner", local.Owner, "name", local.Name)
+
 	remote, err := s.github.RefreshRepository(ctx, local.Owner, local.Name)
 	if err != nil {
 		logging.Debug(ctx, "github fetch failed", "operation", "refresh", "repo_id", local.ID, "error_kind", errorKind(err))
 		return Repository{}, err
 	}
+
 	logging.Debug(ctx, "github fetch succeeded", "operation", "refresh", "repo_id", local.ID, "stars", remote.Stars)
+
 	parsed := local.ID
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
 		return Repository{}, fmt.Errorf("begin refresh transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
 	sequence, err := nextSequence(ctx, tx)
 	if err != nil {
 		return Repository{}, err
 	}
+
 	updated, err := tx.Client().Repository.UpdateOneID(parsed).
 		SetOwner(remote.Owner).SetName(remote.Name).SetFullName(remote.FullName).
 		SetNormalizedFullName(strings.ToLower(remote.FullName)).SetNillableDescription(remote.Description).
@@ -293,6 +304,7 @@ func (s *Service) Refresh(ctx context.Context, id string) (Repository, error) {
 	if err := tx.Commit(); err != nil {
 		return Repository{}, fmt.Errorf("commit refresh: %w", err)
 	}
+
 	return fromEnt(updated), nil
 }
 
@@ -300,11 +312,13 @@ func (s *Service) createStored(ctx context.Context, remote client.Repository) (R
 	if _, _, err := normalize(remote.Owner, remote.Name); err != nil || remote.FullName == "" || remote.HTMLURL == "" || remote.Stars < 0 {
 		return Repository{}, ErrInvalidInput
 	}
+
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
 		return Repository{}, fmt.Errorf("begin creation transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
 	normalizedFullName := strings.ToLower(remote.FullName)
 	sequence, err := nextSequence(ctx, tx)
 	if err != nil {
@@ -327,6 +341,7 @@ func (s *Service) createStored(ctx context.Context, remote client.Repository) (R
 	if err := tx.Commit(); err != nil {
 		return Repository{}, fmt.Errorf("commit creation: %w", err)
 	}
+
 	return fromEnt(stored), nil
 }
 
@@ -335,10 +350,12 @@ func nextSequence(ctx context.Context, tx *ent.Tx) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("lock change sequence: %w", err)
 	}
+
 	updated, err := tx.Client().ChangeSequence.UpdateOneID(row.ID).AddLastValue(1).Save(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("advance change sequence: %w", err)
 	}
+
 	return updated.LastValue, nil
 }
 
@@ -346,6 +363,7 @@ func insertChange(ctx context.Context, client *ent.Client, sequence int64, event
 	if err := client.RepositoryChange.Create().SetID(uuid.New()).SetSequence(sequence).SetEventID(eventID.String()).SetRepoID(repoID).SetOperation(repositorychange.Operation(operation)).SetRepositorySnapshot(state).SetChangedAt(changedAt).Exec(ctx); err != nil {
 		return fmt.Errorf("insert repository change: %w", err)
 	}
+
 	return nil
 }
 
@@ -354,15 +372,30 @@ func normalize(owner, name string) (string, string, error) {
 	if owner == "" || name == "" || strings.Contains(owner, "/") || strings.Contains(name, "/") {
 		return "", "", ErrInvalidInput
 	}
+
 	return owner, name, nil
 }
 
 func fromEnt(row *ent.Repository) Repository {
-	return Repository{ID: row.ID, Owner: row.Owner, Name: row.Name, FullName: row.FullName, Description: stringPointer(row.Description), Stars: row.Stars, Language: stringPointer(row.Language), HTMLURL: row.HTMLURL, Notes: row.Notes, FetchedAt: row.FetchedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return Repository{
+		ID:          row.ID,
+		Owner:       row.Owner,
+		Name:        row.Name,
+		FullName:    row.FullName,
+		Description: stringPointer(row.Description),
+		Stars:       row.Stars,
+		Language:    stringPointer(row.Language),
+		HTMLURL:     row.HTMLURL,
+		Notes:       row.Notes,
+		FetchedAt:   row.FetchedAt,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
+	}
 }
 
 func snapshot(row *ent.Repository) map[string]any {
 	value := fromEnt(row)
+
 	return map[string]any{"id": value.ID.String(), "owner": value.Owner, "name": value.Name, "full_name": value.FullName, "description": value.Description, "stars": value.Stars, "language": value.Language, "html_url": value.HTMLURL, "notes": value.Notes, "fetched_at": value.FetchedAt, "created_at": value.CreatedAt, "updated_at": value.UpdatedAt}
 }
 
@@ -380,6 +413,7 @@ func encodeCursor(cursor listCursor) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
 func decodeCursor(value string) (listCursor, error) {
@@ -388,6 +422,7 @@ func decodeCursor(value string) (listCursor, error) {
 	if err != nil || json.Unmarshal(bytes, &cursor) != nil || cursor.Version != 1 {
 		return listCursor{}, ErrInvalidCursor
 	}
+
 	return cursor, nil
 }
 
@@ -395,6 +430,7 @@ func stringPointer(value string) *string {
 	if value == "" {
 		return nil
 	}
+
 	return &value
 }
 

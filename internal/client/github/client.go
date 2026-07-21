@@ -116,6 +116,7 @@ func (c *Client) FetchRepository(ctx context.Context, owner, name string) (Repos
 	if payload.Owner.Login == nil || payload.Name == nil || payload.FullName == nil || payload.Stargazers == nil || payload.HTMLURL == nil || *payload.Owner.Login == "" || *payload.Name == "" || *payload.FullName == "" || *payload.HTMLURL == "" || *payload.Stargazers < 0 {
 		return Repository{}, requestError(ErrInvalidResponse, response.StatusCode(), rateLimitFrom(response.RawResponse, c.now()), "repository response is missing required fields", nil)
 	}
+
 	return Repository{
 		Owner:       *payload.Owner.Login,
 		Name:        *payload.Name,

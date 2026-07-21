@@ -45,16 +45,20 @@ func WriteServiceError(c *gin.Context, err error) {
 		"github_retry_after_ms", classification.retryAfterMs,
 		"github_reset_at", classification.resetAt,
 	}
+
 	if classification.kind == "internal" {
 		args = append(args, "error_type", fmt.Sprintf("%T", err))
 	}
+
 	logging.Warn(c.Request.Context(), "request failed", args...)
+
 	if classification.retryAfterMs > 0 {
 		seconds := math.Ceil(float64(classification.retryAfterMs) / float64(time.Second.Milliseconds()))
 		if seconds > 0 && seconds <= float64(math.MaxInt) {
 			c.Header("Retry-After", strconv.Itoa(int(seconds)))
 		}
 	}
+
 	WriteError(c, classification.status, classification.code, message)
 }
 
